@@ -1,7 +1,7 @@
 '''
 Created on Apr 1, 2013
 
-@author: Matt
+@author: Matt and Arjun
 '''
 
 from Tkinter import Tk, Frame, BOTH
