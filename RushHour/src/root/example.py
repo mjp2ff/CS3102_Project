@@ -4,12 +4,12 @@ Created on Apr 1, 2013
 @author: Matt and Arjun
 '''
 
-from Tkinter import Tk, Frame, BOTH
+from Tkinter import *
 
 class Example(Frame):
     
     def __init__(self, parent):
-        Frame.__init__(self, parent, background="white")
+        Frame.__init__(self, parent, background="red")
         self.parent = parent
         self.initUI()
     def initUI(self):
@@ -18,8 +18,9 @@ class Example(Frame):
 
 def main():
     root = Tk()
-    root.geometry("250x150+300+300")
-    app = Example(root)
+    w = Label(root, text="Hello, world!")
+    w.pack();
+    
     root.mainloop()
 
 
