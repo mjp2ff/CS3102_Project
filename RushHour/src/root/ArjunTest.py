@@ -16,14 +16,16 @@ root.title("Rush Hour!")
 # code to add widgets
 can = Canvas (root,width=800,height=450,bg=background) 
 can.grid()
-# note that rect is actually just an integer that is used to identify 
+# note that create_rectangle actually returns an integer that is used to identify 
 # that shape in the context of the canvas that it was created within. 
-rect = can.create_rectangle(400,0,600,200,fill=rectanglecolor) 
+cars = {}
+cars[0] = can.create_rectangle(400,0,600,200,fill=rectanglecolor) 
 
+# variables for moving rectangles around
 x = 0
 y = 0
-
 firstTime = True
+
 def dragMove(event):
     global firstTime
     if firstTime:
@@ -32,7 +34,7 @@ def dragMove(event):
         x = event.x
         y = event.y
         # bbox on a rectangle returns the following tuple ((x1, y1), (x2, y2))
-        tuple = can.bbox(rect)
+        tuple = can.bbox(cars[0])
     
         # array that this loop creates is x1, y1, x2, y2
         loc = {}
@@ -47,7 +49,7 @@ def dragMove(event):
             x = event.x
             y = event.y
             # bbox on a rectangle returns the following tuple ((x1, y1), (x2, y2))
-            tuple = can.bbox(rect)
+            tuple = can.bbox(cars[0])
     
             # array that this loop creates is x1, y1, x2, y2
             loc = {}
@@ -58,7 +60,7 @@ def dragMove(event):
             if y < loc[1] or y > loc[3]:
                 y = 1000
         else:
-            can.move(rect, event.x-x, event.y-y)
+            can.move(cars[0], event.x-x, event.y-y)
             root.update()
             global x, y
             x = event.x
