@@ -4,7 +4,6 @@ Created on Apr 5, 2013
 @author: Arjun
 '''
 from Tkinter import *
-from symbol import if_stmt
 
 rectanglecolor = 'orange' 
 background = tk_rgb = "#%02x%02x%02x" % (100, 255, 100) 
@@ -32,12 +31,38 @@ def dragMove(event):
         global x, y
         x = event.x
         y = event.y
+        # bbox on a rectangle returns the following tuple ((x1, y1), (x2, y2))
+        tuple = can.bbox(rect)
+    
+        # array that this loop creates is x1, y1, x2, y2
+        loc = {}
+        for num, entry in enumerate(tuple):
+            loc[num] = entry
+        if x < loc[0] or x > loc[2]:
+            x = 1000
+        if y < loc[1] or y > loc[3]:
+            y = 1000
     else:
-        can.move(rect, event.x-x, event.y-y)
-        root.update()
-        global x, y
-        x = event.x
-        y = event.y
+        if x == 1000 or y == 1000:
+            x = event.x
+            y = event.y
+            # bbox on a rectangle returns the following tuple ((x1, y1), (x2, y2))
+            tuple = can.bbox(rect)
+    
+            # array that this loop creates is x1, y1, x2, y2
+            loc = {}
+            for num, entry in enumerate(tuple):
+                loc[num] = entry
+            if x < loc[0] or x > loc[2]:
+                x = 1000
+            if y < loc[1] or y > loc[3]:
+                y = 1000
+        else:
+            can.move(rect, event.x-x, event.y-y)
+            root.update()
+            global x, y
+            x = event.x
+            y = event.y
 
 def resetFirstTime(event):
     global firstTime
