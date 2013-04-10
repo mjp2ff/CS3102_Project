@@ -1,0 +1,5 @@
+A 0,0 1,2 red 
+B 1,1 2,3 blue 
+C 2,2 3,4 yellow 
+D 3,3 4,5 green 
+E 4,4 5,6 orange 
