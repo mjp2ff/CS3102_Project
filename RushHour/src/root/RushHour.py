@@ -7,15 +7,21 @@ from Tkinter import *
 from sys import argv
 import time
 
+global x, y, first
+x = 0
+y = 0
+first = True
+
 class Board:
     master = None
     def __init__(self, master):
         self.master = master
         master.canvas = Canvas(master, width=600, height=600, borderwidth=0, highlightthickness=0)
-        master.canvas.grid(rowspan=6, columnspan=6)
+#         master.canvas.grid(rowspan=6, columnspan=6)        #Don't think I need this...
         master.canvas.pack(side="top", fill="both", expand="true")
         master.rows = 6
         master.columns = 6
+        master.winrow = 2
         master.cellwidth = (int)(master.canvas.cget('width')) / master.columns
         master.cellheight = (int)(master.canvas.cget('height')) / master.rows
         
@@ -25,54 +31,71 @@ class Board:
         drawGrid(master)
         loadCars(master)
         drawCars(master)
-        master.canvas.bind("<Button-1>", self.mousePressed)
+        master.canvas.bind("<B1-Motion>", self.mouseHeld)
         master.canvas.bind("<ButtonRelease-1>", self.mouseReleased)
 
-    def mousePressed(self, event):
+    def mouseHeld(self, event):
+        global x, y, first
+        if first:
+            first = False
+            x = event.x
+            y = event.y
+            return
+                
         for index in self.master.carArray:
-            absoluteXMin = self.master.carArray[index].xmin*self.master.cellwidth
-            absoluteXMax = self.master.carArray[index].xmax*self.master.cellwidth
-            absoluteYMin = self.master.carArray[index].ymin*self.master.cellheight
-            absoluteYMax = self.master.carArray[index].ymax*self.master.cellheight
+            XMin = self.master.carArray[index].xmin
+            XMax = self.master.carArray[index].xmax
+            YMin = self.master.carArray[index].ymin
+            YMax = self.master.carArray[index].ymax
+#             print YMin
             car = self.master.carArray[index]
             carDirection = self.master.carArray[index].direction
-            if event.x > absoluteXMin and event.x < absoluteXMax and event.y > absoluteYMin and event.y < absoluteYMax:
+            if event.x > XMin and event.x < XMax and event.y > YMin and event.y < YMax:                
                 if carDirection == 'vert':
-                    if event.y < (absoluteYMin + absoluteYMax) / 2:
-                        print "lower vert y half"
-                        car.move(0, 1)
-                        if checkForCollisions(self.master):     # If that makes it collide, move it back.
-                            car.move(0, -1)
-                    if event.y > (absoluteYMin + absoluteYMax) / 2:
-                        print "Upper vert y half"
-                        car.move(0, -1)
-                        if checkForCollisions(self.master):     # If that makes it collide, move it back.
-                            car.move(0, 1)
-                    drawGrid(self.master)
-                    drawCars(self.master)
+                    if not (checkForCollisions(self.master)) and not (YMax > self.master.columns*self.master.cellheight) and not (YMin < 0):
+                        car.move(0, event.y-y)
+                    if checkForWin(self.master):
+                        print "You win!"
                 if carDirection == 'horiz':
-                    print "horiz car touched on press"
-                    if event.x < (absoluteXMin + absoluteXMax) / 2:
-                        print "lower horiz x half"
-                        car.move(1, 0)
-                        if checkForCollisions(self.master):     # If that makes it collide, move it back.
-                            car.move(-1, 0)
-                    if event.x > (absoluteXMin + absoluteXMax) / 2:
-                        print "Upper horiz x half"
-                        car.move(-1, 0)
-                        if checkForCollisions(self.master):     # If that makes it collide, move it back.
-                            car.move(1, 0)
-                    drawGrid(self.master)
-                    drawCars(self.master)
+                    if not (checkForCollisions(self.master)) and not (XMax > self.master.columns*self.master.cellwidth) and not (XMin < 0):
+                        car.move(event.x-x, 0)
+                    if checkForWin(self.master):
+                        print "You win!"
+        drawGrid(self.master)
+        drawCars(self.master)
+                
+        x = event.x
+        y = event.y
         
     def mouseReleased(self, event):      
+        global first
+        first = True
         for index in self.master.carArray:
-            absoluteXMin = self.master.carArray[index].xmin*self.master.cellwidth
-            absoluteXMax = self.master.carArray[index].xmax*self.master.cellwidth
-            absoluteYMin = self.master.carArray[index].ymin*self.master.cellheight
-            absoluteYMax = self.master.carArray[index].ymax*self.master.cellheight
-#             if event.x > absoluteXMin and event.x < absoluteXMax and event.y > absoluteYMin and event.y < absoluteYMax:
-#                 print "Car touched on release!" 
+            XMin = self.master.carArray[index].xmin
+            XMax = self.master.carArray[index].xmax
+            YMin = self.master.carArray[index].ymin
+            YMax = self.master.carArray[index].ymax
+            car = self.master.carArray[index]
+            carDirection = self.master.carArray[index].direction
+            print "released!"
+            if carDirection == 'vert':
+                if self.master.cellheight - YMin % self.master.cellheight < YMin % self.master.cellheight:
+                    car.move(0, self.master.cellheight - YMin % self.master.cellheight)
+                else:
+                    car.move(0, -1*(int)(YMin % self.master.cellheight))
+            if carDirection == 'horiz':
+                if self.master.cellwidth - XMin % self.master.cellwidth < XMin % self.master.cellwidth:
+                    car.move(self.master.cellwidth - XMin % self.master.cellwidth, 0)
+                else:
+                    car.move(-1*(int)(XMin % self.master.cellwidth), 0)
+        drawGrid(self.master)
+        drawCars(self.master)
+
+def checkForWin(master):
+    for i in master.carArray:
+        if master.carArray[i].isWin(master):
+            return True
+    return False
 
 
 def checkForCollisions(master):
@@ -106,7 +129,7 @@ def loadCars(master):
         splitLine = line.split(" ")
         initCoords = splitLine[1].split(",")
         endCoords = splitLine[2].split(",")
-        temp = Car((int)(initCoords[0]), (int)(initCoords[1]), (int)(endCoords[0]), (int)(endCoords[1]), splitLine[3], splitLine[4])
+        temp = Car(master, (int)(initCoords[0]), (int)(initCoords[1]), (int)(endCoords[0]), (int)(endCoords[1]), splitLine[3], splitLine[4])
         master.carArray[splitLine[0]] = temp
 
     # check for initial collisions
@@ -115,7 +138,7 @@ def loadCars(master):
         return
         # FIX THIS LATER TO MAKE IT ACTUALLY WORK
 
-def drawCars(master):
+def drawCars(master):   #master is board
     # There are no initial collisions, so draw for real
     for index in master.carArray:
         master.carArray[index].draw(master)
@@ -125,30 +148,33 @@ def drawCars(master):
 class Car(object):
     # construtor
     xmin, xmax, ymin, ymax, color, direction = 0, 0, 0, 0, "", ""
-    def __init__(self, xmin, ymin, xmax, ymax, color, direction):
+    def __init__(self, master, xmin, ymin, xmax, ymax, color, direction):
         self.length = max(xmax - xmin, ymax-ymin)
-        self.xmin= xmin
-        self.ymin = ymin
-        self.xmax = xmax
-        self.ymax = ymax
+        self.xmin= xmin*master.cellwidth
+        self.ymin = ymin*master.cellheight
+        self.xmax = xmax*master.cellwidth
+        self.ymax = ymax*master.cellheight
         self.color = color
         self.direction = direction
     
     # draws a car on the board
     def draw(self, master):
-        master.rect[self.xmin,self.ymin] = master.canvas.create_rectangle(self.xmin*master.cellwidth, self.ymin*master.cellheight,self.xmax*master.cellwidth, self.ymax*master.cellheight, fill=self.color, tags="car")
+        master.rect[self.xmin,self.ymin] = master.canvas.create_rectangle(self.xmin, self.ymin,self.xmax, self.ymax, fill=self.color, tags="car")
        
     # checks if two cars are colliding
     def isColliding(self, car2):
-        if (self.xmin >= car2.xmin and self.xmin < car2.xmax) and (self.ymin >= car2.ymin and self.ymin < car2.ymax):
+        if ((self.xmin >= car2.xmin and self.xmin < car2.xmax) and (self.ymin >= car2.ymin and self.ymin < car2.ymax)) \
+            or ((self.xmax > car2.xmin and self.xmax <= car2.xmax) and (self.ymax > car2.ymin and self.ymax <= car2.ymax)):
+            return True
+        return False
+        
+    def isWin(self, master):
+        if self.xmax > master.columns*master.cellwidth and self.ymin == master.winrow*master.cellheight:
             return True
         return False
         
     # moves a car somewhere else
     def move(self, dx, dy):
-        if self.xmin + dx < 0 or self.ymin + dy < 0:
-            print "NO!"
-            return None
         self.xmin += dx
         self.xmax += dx
         self.ymin += dy
@@ -156,6 +182,7 @@ class Car(object):
            
 def main():
     root = Tk()
+    root.geometry('800x600+0+0')        # Make this be parameters + buffer space
     thingy = Board(root)
     root.mainloop()
 

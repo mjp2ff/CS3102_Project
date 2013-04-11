@@ -1,4 +1,4 @@
-A 0,0 1,2 red vert 
+A 0,2 2,3 red horiz 
 B 3,3 4,5 blue vert 
 C 1,1 3,2 yellow horiz 
 D 0,4 2,5 green horiz 
