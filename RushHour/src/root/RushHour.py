@@ -7,17 +7,20 @@ from Tkinter import *
 from sys import argv
 import time
 
-global x, y, first
+global x, y, first      # globals for mouse movement
 x = 0
 y = 0
 first = True
+
+global currentCar, oldCar
+currentCar = None
+oldCar = None
 
 class Board:
     master = None
     def __init__(self, master):
         self.master = master
         master.canvas = Canvas(master, width=600, height=600, borderwidth=0, highlightthickness=0)
-#         master.canvas.grid(rowspan=6, columnspan=6)        #Don't think I need this...
         master.canvas.pack(side="top", fill="both", expand="true")
         master.rows = 6
         master.columns = 6
@@ -31,36 +34,45 @@ class Board:
         drawGrid(master)
         loadCars(master)
         drawCars(master)
+        master.canvas.bind("<Button-1>", self.mousePressed)
         master.canvas.bind("<B1-Motion>", self.mouseHeld)
         master.canvas.bind("<ButtonRelease-1>", self.mouseReleased)
 
-    def mouseHeld(self, event):
-        global x, y, first
-        if first:
+    def mousePressed(self, event):
+        global currentCar, oldCar
+#         print "Hi!"
+        currentCar = None
+        oldCar = None
+        for index in self.master.carArray:
+            if event.x > self.master.carArray[index].xmin and event.x < self.master.carArray[index].xmax and event.y > self.master.carArray[index].ymin and event.y < self.master.carArray[index].ymax:
+                currentCar = self.master.carArray[index]
+                # Save old car (duplicate, not reference) in case it screws up later.
+                # WHY WONT YOU WORK !
+                oldCar = Car(self.master, self.master.carArray[index].xmin, self.master.carArray[index].ymin, self.master.carArray[index].xmax, self.master.carArray[index].ymax, self.master.carArray[index].color, self.master.carArray[index].direction)
+                return
+
+    def mouseHeld(self, event):        
+        global x, y, first, currentCar
+        
+        if currentCar == None:      # If not clicking on a car, return
+            return 
+        if first:                   # If this is the first click, return. Not sure if I need this...
             first = False
             x = event.x
             y = event.y
             return
                 
-        for index in self.master.carArray:
-            XMin = self.master.carArray[index].xmin
-            XMax = self.master.carArray[index].xmax
-            YMin = self.master.carArray[index].ymin
-            YMax = self.master.carArray[index].ymax
-#             print YMin
-            car = self.master.carArray[index]
-            carDirection = self.master.carArray[index].direction
-            if event.x > XMin and event.x < XMax and event.y > YMin and event.y < YMax:                
-                if carDirection == 'vert':
-                    if not (checkForCollisions(self.master)) and not (YMax > self.master.columns*self.master.cellheight) and not (YMin < 0):
-                        car.move(0, event.y-y)
-                    if checkForWin(self.master):
-                        print "You win!"
-                if carDirection == 'horiz':
-                    if not (checkForCollisions(self.master)) and not (XMax > self.master.columns*self.master.cellwidth) and not (XMin < 0):
-                        car.move(event.x-x, 0)
-                    if checkForWin(self.master):
-                        print "You win!"
+        if event.x > currentCar.xmin and event.x < currentCar.xmax and event.y > currentCar.ymin and event.y < currentCar.ymax:
+            if currentCar.direction == 'vert':
+                if not (checkForCollisions(currentCar, self.master)) and not (currentCar.ymax > self.master.columns*self.master.cellheight) and not (currentCar.ymin < 0):
+                    currentCar.move(0, event.y-y)
+                if checkForWin(self.master):
+                    print "You win!"
+            if currentCar.direction == 'horiz':
+                if not (checkForCollisions(currentCar, self.master)) and not (currentCar.xmax > self.master.columns*self.master.cellwidth) and not (currentCar.xmin < 0):
+                    currentCar.move(event.x-x, 0)
+                if checkForWin(self.master):
+                    print "You win!"
         drawGrid(self.master)
         drawCars(self.master)
                 
@@ -68,26 +80,38 @@ class Board:
         y = event.y
         
     def mouseReleased(self, event):      
-        global first
+        global first, currentCar, oldCar
+        if currentCar == None:
+            return      
         first = True
-        for index in self.master.carArray:
-            XMin = self.master.carArray[index].xmin
-            XMax = self.master.carArray[index].xmax
-            YMin = self.master.carArray[index].ymin
-            YMax = self.master.carArray[index].ymax
-            car = self.master.carArray[index]
-            carDirection = self.master.carArray[index].direction
-            print "released!"
-            if carDirection == 'vert':
-                if self.master.cellheight - YMin % self.master.cellheight < YMin % self.master.cellheight:
-                    car.move(0, self.master.cellheight - YMin % self.master.cellheight)
-                else:
-                    car.move(0, -1*(int)(YMin % self.master.cellheight))
-            if carDirection == 'horiz':
-                if self.master.cellwidth - XMin % self.master.cellwidth < XMin % self.master.cellwidth:
-                    car.move(self.master.cellwidth - XMin % self.master.cellwidth, 0)
-                else:
-                    car.move(-1*(int)(XMin % self.master.cellwidth), 0)
+        if currentCar.direction == 'vert':
+            dy = 0
+            if currentCar.ymin < 0:
+                dy = -1*(int)(currentCar.ymin)
+            if currentCar.ymin > self.master.cellheight*self.master.rows:
+                dy = -1*(int)(currentCar.ymin - self.master.cellheight*self.master.rows)
+            if self.master.cellheight - currentCar.ymin % self.master.cellheight < currentCar.ymin % self.master.cellheight:
+                dy = self.master.cellheight - currentCar.ymin % self.master.cellheight
+            else:
+                dy = -1*(int)(currentCar.ymin % self.master.cellheight)
+            currentCar.move(0, dy)
+            if (checkForCollisions(currentCar, self.master)):
+                self.master.carArray[self.master.carArray.get(currentCar)] = oldCar
+        elif currentCar.direction == 'horiz':
+            dx = 0
+            if currentCar.xmin < 0:
+                dx = -1*(int)(currentCar.xmin)
+            if currentCar.ymin > self.master.cellheight*self.master.rows:
+                dx = -1*(int)(currentCar.xmin - self.master.cellwidth*self.master.columns)
+            if self.master.cellwidth - currentCar.xmin % self.master.cellwidth < currentCar.xmin % self.master.cellwidth:
+                dx = self.master.cellwidth - currentCar.xmin % self.master.cellwidth
+            else:
+                dx = -1*(int)(currentCar.xmin % self.master.cellwidth)
+            currentCar.move(dx, 0)
+            if (checkForCollisions(currentCar, self.master)):
+                print "NOOOOO"
+                self.master.carArray[self.master.carArray.get(currentCar)] = oldCar
+        currentCar = None
         drawGrid(self.master)
         drawCars(self.master)
 
@@ -97,14 +121,20 @@ def checkForWin(master):
             return True
     return False
 
-
-def checkForCollisions(master):
+def checkAllForCollisions(master):
     for i in master.carArray:
         car1 = master.carArray[i]
         for j in master.carArray:
             car2 = master.carArray[j]
             if car1 != car2 and car1.isColliding(car2):
                 return True
+    return False
+
+def checkForCollisions(car, master):
+    for i in master.carArray:
+        car2 = master.carArray[i]
+        if car != car2 and car.isColliding(car2):
+            return True
     return False
      
 def drawGrid(master):
@@ -120,7 +150,7 @@ def drawGrid(master):
 def loadCars(master):
     # read in the lines from the file
     #script, filename = argv                # FIX THIS LATER
-    filename = "test1.txt"
+    filename = "test3.txt"
     with open(filename) as f:
         content = f.readlines()
     
@@ -133,7 +163,7 @@ def loadCars(master):
         master.carArray[splitLine[0]] = temp
 
     # check for initial collisions
-    if checkForCollisions(master):
+    if checkAllForCollisions(master):
         print "Bad setup!"
         return
         # FIX THIS LATER TO MAKE IT ACTUALLY WORK
