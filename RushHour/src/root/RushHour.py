@@ -26,22 +26,20 @@ class Board:
         master.wincolumn = 5
         master.cellwidth = (int)(master.canvas.cget('width')) / master.columns
         master.cellheight = (int)(master.canvas.cget('height')) / master.rows
-                
-        master.carArray = {}        # Stores all our cars that are on the board
-        master.rect = {}            # Stores all the rectangles (grid).
 
         master.level = StringVar()
         master.level.set("level1.txt")
         master.menu = OptionMenu(master, master.level, "level1.txt", "level2.txt", "level3.txt", "level4.txt", \
             "level5.txt", command=self.update)
         master.menu.pack(side="right")
-
-
         self.update(None)
         master.canvas.bind("<Button-1>", self.mousePressed)
         master.canvas.bind("<Key>", self.keyPressed)
 
     def update(self, event):    # This is stupid I'll explain it later...
+        print "Updated"
+        self.master.carArray = {}        # Stores all our cars that are on the board
+        self.master.rect = {}            # Stores all the rectangles (grid).
         self.clearBoard()
         self.drawGrid()
         self.loadCars()
