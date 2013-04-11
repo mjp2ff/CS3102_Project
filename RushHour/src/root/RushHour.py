@@ -8,21 +8,15 @@ import tkMessageBox
 # from sys import argv
 # import time
 
-global x, y, first
-x = 0
-y = 0
-first = ""
-
-global currentCar, oldCar
+global currentCar
 currentCar = None
-oldCar = None
 
 class Board:
     master = None
     def __init__(self, master):
         self.master = master
         master.canvas = Canvas(master, width=600, height=600, borderwidth=0, highlightthickness=0)
-        master.canvas.pack(side="top", fill="both", expand="true")
+        master.canvas.pack(side="left", fill="both", expand="true")
         master.canvas.focus_set()
         master.rows = 6
         master.columns = 6
@@ -30,16 +24,26 @@ class Board:
         master.wincolumn = 5
         master.cellwidth = (int)(master.canvas.cget('width')) / master.columns
         master.cellheight = (int)(master.canvas.cget('height')) / master.rows
-        
+                
         master.carArray = {}        # Stores all our cars that are on the board
         master.rect = {}            # Stores all the rectangles (grid).
 
+        master.level = StringVar()
+        master.level.set("level1.txt")
+        master.menu = OptionMenu(master, master.level, "level1.txt", "level2.txt", "level3.txt", "level4.txt", \
+            "level5.txt", command=self.update)
+        master.menu.pack(side="right")
+
+
+        self.update(None)
+        master.canvas.bind("<Button-1>", self.mousePressed)
+        master.canvas.bind("<Key>", self.keyPressed)
+
+    def update(self, event):    # This is stupid I'll explain it later...
         self.clearBoard()
         self.drawGrid()
         self.loadCars()
         self.drawCars()
-        master.canvas.bind("<Button-1>", self.mousePressed)
-        master.canvas.bind("<Key>", self.keyPressed)
 
     def keyPressed(self, event):
         self.clearBoard()
@@ -91,10 +95,7 @@ class Board:
             car = self.master.carArray[i]
             if car.xmax >= self.master.columns*self.master.cellwidth and car.ymin == self.master.winrow*self.master.cellheight and car.direction == 'horiz':
                 winBox = tkMessageBox.showinfo("Win Message", "Congratulations, you won!")
-                self.clearBoard()
-                self.loadCars()
-                self.drawGrid()
-                self.drawCars()
+                self.update(None)
             
             
     def drawGrid(self):
@@ -118,8 +119,7 @@ class Board:
     def loadCars(self):
         # read in the lines from the file
         #script, filename = argv                # FIX THIS LATER
-        filename = "level2.txt"
-        with open(filename) as f:
+        with open(self.master.level.get()) as f:
             content = f.readlines()
         
         # load in each car in the file
