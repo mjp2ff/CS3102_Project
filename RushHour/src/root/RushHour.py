@@ -5,6 +5,8 @@ Created on Apr 9, 2013
 '''
 from Tkinter import *
 import tkMessageBox
+import winsound
+import threading
 # from sys import argv
 # import time
 
@@ -30,14 +32,13 @@ class Board:
         master.level = StringVar()
         master.level.set("level1.txt")
         master.menu = OptionMenu(master, master.level, "level1.txt", "level2.txt", "level3.txt", "level4.txt", \
-            "level5.txt", command=self.update)
+            "level5.txt", command=self.reset)
         master.menu.pack(side="right")
-        self.update(None)
+        self.reset(None)
         master.canvas.bind("<Button-1>", self.mousePressed)
         master.canvas.bind("<Key>", self.keyPressed)
 
-    def update(self, event):    # This is stupid I'll explain it later...
-        print "Updated"
+    def reset(self, event):
         self.master.carArray = {}        # Stores all our cars that are on the board
         self.master.rect = {}            # Stores all the rectangles (grid).
         self.clearBoard()
@@ -50,6 +51,10 @@ class Board:
         self.drawGrid()
         self.drawCars()
         global currentCar
+        if event.char == 'r':
+            self.reset(None)        # Will make this a physical button at some point
+            return
+        
         if currentCar != None:
             if currentCar.direction == 'vert':
                 if event.char == 'w':
@@ -95,9 +100,9 @@ class Board:
             car = self.master.carArray[i]
             if car.xmax >= self.master.columns*self.master.cellwidth and car.ymin == self.master.winrow*self.master.cellheight and car.direction == 'horiz':
                 winBox = tkMessageBox.showinfo("Win Message", "Congratulations, you won!")
-                self.update(None)
-            
-            
+                self.reset(None)
+                threading.Thread(target=winsound.PlaySound('fanfare.wav',winsound.SND_FILENAME)).start()            
+
     def drawGrid(self):
         for column in range(self.master.columns):
             for row in range(self.master.rows):
