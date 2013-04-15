@@ -13,7 +13,8 @@ import threading
 global currentCar
 currentCar = None
 
-#BLAH
+global moved        # Checks if a move was made, for use in 
+moved = False
 
 class Board:
     master = None
@@ -22,37 +23,59 @@ class Board:
         master.canvas = Canvas(master, width=600, height=600, borderwidth=0, highlightthickness=0)
         master.canvas.pack(side="left", fill="both", expand="true")
         master.canvas.focus_set()
+       
         master.rows = 6
         master.columns = 6
         master.winrow = 2
         master.wincolumn = 5
         master.cellwidth = (int)(master.canvas.cget('width')) / master.columns
         master.cellheight = (int)(master.canvas.cget('height')) / master.rows
+        master.score = 0
 
         master.level = StringVar()
         master.level.set("level1.txt")
-        master.menu = OptionMenu(master, master.level, "level1.txt", "level2.txt", "level3.txt", "level4.txt", \
-            "level5.txt", command=self.reset)
-        master.menu.pack(side="right")
-        self.reset(None)
+        master.menu = OptionMenu(master, master.level, "level1.txt", "level2.txt", "level3.txt", \
+            "level4.txt", "level5.txt", command=self.resetEvent)
+#         master.menu.pack(side="top", fill=X)
+        master.menu.place(x=610, y=10, height=80, width=180)
+        
+        master.resetButton = Button(master, text="RESET", command=self.reset)
+#         master.resetButton.pack(side="top", fill=X)
+        master.resetButton.place(x=610, y=110, height=80, width=180)
+        
+        master.scoreLbl = Label(master, text="Score: " + str(master.score))
+        master.scoreLbl.place(x=620, y=210, height=80, width=180)
+        
+        self.reset()
         master.canvas.bind("<Button-1>", self.mousePressed)
         master.canvas.bind("<Key>", self.keyPressed)
 
-    def reset(self, event):
+    def reset(self):                    # This method takes no parameters (for button).
+        self.resetEvent(None)
+
+    def resetEvent(self, event):        # This method takes a parameter (for optionmenu)
         self.master.carArray = {}        # Stores all our cars that are on the board
         self.master.rect = {}            # Stores all the rectangles (grid).
         self.clearBoard()
         self.drawGrid()
         self.loadCars()
         self.drawCars()
+        self.master.score = -1          # Resets score to 0
+        self.incrementScore()
+        
+    def incrementScore(self):
+        self.master.score += 1
+        self.master.scoreLbl = Label(self.master, text="Score: " + str(self.master.score))
+        self.master.scoreLbl.place(x=620, y=210, height=80, width=180)
 
     def keyPressed(self, event):
+        global moved
         self.clearBoard()
         self.drawGrid()
         self.drawCars()
         global currentCar
         if event.char == 'r':
-            self.reset(None)        # Will make this a physical button at some point
+            self.reset()        # Will make this a physical button at some point
             return
         
         if currentCar != None:
@@ -74,14 +97,18 @@ class Board:
                     currentCar.move(1*self.master.cellwidth, 0)
                     if (currentCar.checkForCollisions(self.master)) or (currentCar.xmax > self.master.columns*self.master.cellwidth) or (currentCar.xmin < 0):
                         currentCar.move(-1*self.master.cellwidth, 0)
+            moved = True
         self.clearBoard()
         self.drawGrid()
         self.drawCars()
         self.checkForWin()
       
     def mousePressed(self, event):
-        global currentCar
+        global currentCar, moved
 #         print "Hi!"
+        if moved:
+            self.incrementScore()
+            moved = False
         currentCar = None
         for index in self.master.carArray:
             self.master.carArray[index].tags = 'car'    # Do this to un-highlight all non-current cars
@@ -100,7 +127,7 @@ class Board:
             car = self.master.carArray[i]
             if car.xmax >= self.master.columns*self.master.cellwidth and car.ymin == self.master.winrow*self.master.cellheight and car.direction == 'horiz':
                 winBox = tkMessageBox.showinfo("Win Message", "Congratulations, you won!")
-                self.reset(None)
+                self.reset()
                 threading.Thread(target=winsound.PlaySound('fanfare.wav',winsound.SND_FILENAME)).start()            
 
     def drawGrid(self):
