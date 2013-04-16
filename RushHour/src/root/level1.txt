@@ -1,8 +1,0 @@
-A 0,0 2,1 cyan horiz 
-B 5,0 6,3 gold vert 
-C 0,1 1,4 mediumorchid vert 
-D 3,1 4,4 blue vert 
-E 1,2 3,3 red horiz 
-F 0,4 1,6 darkorange vert 
-G 4,4 6,5 deepskyblue horiz 
-H 2,5 5,6 turquoise horiz 
