@@ -162,7 +162,7 @@ class Board:
             if car.xmax >= self.master.columns * self.master.cellwidth and car.ymin == self.master.winrow * self.master.cellheight and car.direction == 'horiz':
                 winBox = tkMessageBox.showinfo("Win Message", "Congratulations, you won!")
                 self.reset()
-                threading.Thread(target=winsound.PlaySound('fanfare.wav', winsound.SND_FILENAME)).start()            
+                target=winsound.PlaySound('fanfare.wav', winsound.SND_FILENAME)            
 
     def drawGrid(self):
         for column in range(self.master.columns):
