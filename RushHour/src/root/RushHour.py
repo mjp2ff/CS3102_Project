@@ -4,7 +4,7 @@ Created on Apr 9, 2013
 @author: Matt
 '''
 from Tkinter import *
-from random import randrange
+from random import randrange, choice, sample
 import tkMessageBox
 import winsound
 import threading
@@ -118,16 +118,17 @@ class Board:
             m = None
             if currentCar.direction == 'vert':
                 if event.char == 'w':
-                    m = Move(self, -1 * self.master.cellheight)        
+                    m = Move(self, -1)        
                 if event.char == 's':
-                    m = Move(self, 1 * self.master.cellheight)
+                    m = Move(self, 1)
             if currentCar.direction == 'horiz':
                 if event.char == 'a':
-                    m = Move(self, -1 * self.master.cellwidth)
+                    m = Move(self, -1)
                 if event.char == 'd':
-                    m = Move(self, 1 * self.master.cellwidth)
+                    m = Move(self, 1)
             if m != None:
                 currentCar.doMove(m)
+                currentCar.validateMove(m)
         self.clearBoard()
         self.drawGrid()
         self.drawCars()
@@ -135,7 +136,6 @@ class Board:
       
     def mousePressed(self, event):
         global currentCar, moved
-#         print "Hi!"
         if moved:
             self.incrementMoves()
             moved = False
@@ -161,11 +161,6 @@ class Board:
                 self.reset()
                 target=winsound.PlaySound('fanfare.wav', winsound.SND_FILENAME)
                 moved = False
-                print self.listMoves()
-#                 i = 0
-#                 for index in self.master.movesDone:
-#                     i += 1
-#                 print "Things" + str(i) # Right now, prints out the total number of moves done. Find a better way to do this.
 
     def drawGrid(self):
         for column in range(self.master.columns):
@@ -196,7 +191,7 @@ class Board:
             splitLine = line.split(" ")
             initCoords = splitLine[1].split(",")
             endCoords = splitLine[2].split(",")
-            temp = Car(self.master, splitLine[0], (int)(initCoords[0]), (int)(initCoords[1]), (int)(endCoords[0]), (int)(endCoords[1]))
+            temp = Car(self, splitLine[0], (int)(initCoords[0]), (int)(initCoords[1]), (int)(endCoords[0]), (int)(endCoords[1]))
             self.master.carArray[splitLine[0]] = temp
             
     def clearBoard(self):
@@ -205,25 +200,47 @@ class Board:
     def listMoves(self):
         return self.master.movesDone
     
+    # Generates a valid move and executes it.
+    def generateMove(self):
+        while True:
+            randCarArray = sample(self.master.carArray, 1)
+            randCar = self.master.carArray[randCarArray[0]]
+            tempMove = Move(randCar, randrange(-1, 2, 1))
+            if randCar.checkMove(tempMove) and tempMove.dist != 0:
+                randCar.doMove(tempMove)
+                randCar.validateMove(tempMove)
+                return tempMove
+    
+    #Checks board for collisions.            
+    def checkForCollisions(self):
+        for i in self.master.carArray:
+            car1 = self.master.carArray[i]
+            for j in self.master.carArray:
+                car2 = self.master.carArray[j]
+                if car1 != car2 and car1.isColliding(car2):
+                    return True
+        return False
+            
 class Car(object):
     master, xmin, xmax, ymin, ymax, color, direction, tags = None, 0, 0, 0, 0, "", "", ""
     # construtor
-    def __init__(self, master, name, xmin, ymin, xmax, ymax):
-        self.master = master
+    def __init__(self, board, name, xmin, ymin, xmax, ymax):
+        self.board = board
+        self.name = name
         self.length = max(xmax - xmin, ymax - ymin)
-        self.xmin = xmin * master.cellwidth
-        self.ymin = ymin * master.cellheight
-        self.xmax = xmax * master.cellwidth
-        self.ymax = ymax * master.cellheight
+        self.xmin = xmin * board.master.cellwidth
+        self.ymin = ymin * board.master.cellheight
+        self.xmax = xmax * board.master.cellwidth
+        self.ymax = ymax * board.master.cellheight
         self.color = "red" if name == "Goal" else "#%06s" % "".join([hex(randrange(16, 255))[2:] for i in range(3)])  #  Most elegant line of code I've ever written.
         self.direction = "horiz" if self.xmax - self.xmin > self.ymax - self.ymin else "vert"
     
     # draws a car on the board
     def draw(self):
         if self.tags == 'current':
-            self.master.rect[self.xmin, self.ymin] = self.master.canvas.create_rectangle(self.xmin + 5, self.ymin + 5, self.xmax - 5, self.ymax - 5, fill=self.color, tags=self.tags, outline='black', width=5)
+            self.board.master.rect[self.xmin, self.ymin] = self.board.master.canvas.create_rectangle(self.xmin + 5, self.ymin + 5, self.xmax - 5, self.ymax - 5, fill=self.color, tags=self.tags, outline='black', width=5)
         else:
-            self.master.rect[self.xmin, self.ymin] = self.master.canvas.create_rectangle(self.xmin + 5, self.ymin + 5, self.xmax - 5, self.ymax - 5, fill=self.color, tags=self.tags)
+            self.board.master.rect[self.xmin, self.ymin] = self.board.master.canvas.create_rectangle(self.xmin + 5, self.ymin + 5, self.xmax - 5, self.ymax - 5, fill=self.color, tags=self.tags)
        
     # checks if two cars are colliding
     def isColliding(self, car2):
@@ -232,35 +249,39 @@ class Car(object):
             return True
         return False
     
-    # Checks if a move was valid.
+    # Checks if a made move was valid. If it wasn't it reverses that move.
     def validateMove(self, move):
         global moved, moveNum
-        if (self.checkForCollisions()) or (self.ymax > self.master.columns * self.master.cellheight) or (self.ymin < 0) \
-            or (self.xmax > self.master.columns * self.master.cellwidth) or (self.xmin < 0):
+        if (self.board.checkForCollisions()) or (self.ymax > self.board.master.columns * self.board.master.cellheight) or (self.ymin < 0) \
+            or (self.xmax > self.board.master.columns * self.board.master.cellwidth) or (self.xmin < 0):
             self.doMove(Move(move.currentCar, -1 * move.dist))
+            return False
         else:
             moved = True
             moveNum += 1
-            self.master.movesDone[move.num] = move
+            self.board.master.movesDone[move.num] = move
+            return True
+        
+    # Checks whether a potential move would be valid. Changes nothing.
+    def checkMove(self, move):
+        self.doMove(move)
+        good = True
+        if (self.board.checkForCollisions()) or (self.ymax > self.board.master.columns * self.board.master.cellheight) or (self.ymin < 0) \
+            or (self.xmax > self.board.master.columns * self.board.master.cellwidth) or (self.xmin < 0):
+            good = False
+        self.doMove(move.getOpposite())
+        return good
     
-    # moves a car somewhere else
+    # moves a car somewhere else. DOES NOT CHECK FOR VALIDITY
     def doMove(self, move):
         if self.direction == "vert":
-            self.ymin += move.dist
-            self.ymax += move.dist
+            self.ymin += move.dist*self.board.master.cellheight
+            self.ymax += move.dist*self.board.master.cellheight
         elif self.direction == "horiz":
-            self.xmin += move.dist
-            self.xmax += move.dist
-        self.validateMove(move)
-        print move.num
-        
-    def checkForCollisions(self):
-        for i in self.master.carArray:
-            car2 = self.master.carArray[i]
-            if self != car2 and self.isColliding(car2):
-                return True
-        return False
-       
+            self.xmin += move.dist*self.board.master.cellwidth
+            self.xmax += move.dist*self.board.master.cellwidth
+#         print move.num # WORK ON MOVENUM TO MAKE IT BETTER
+               
 class Move(object):
     currentCar, dist, num = None, 0, 0
     # constructor
@@ -269,6 +290,10 @@ class Move(object):
         self.currentCar = currentCar
         self.dist = dist
         self.num = moveNum
+        
+    def getOpposite(self):
+        reverse = Move(self.currentCar, -1*self.dist)
+        return reverse
         
 class Node(object):
     movesDone, carArray = None, None
@@ -280,9 +305,17 @@ def solve(board):
     print "OK! Solving now."
     # WRITE THIS
     
-def generate(board):
-    print "OK! Generating now."
+def generate(self):                 # Takes in a board as a parameter
     # WRITE THIS
+    self.master.level.set("SolvedBoard")
+    self.reset()
+    for index in range(1000):   # Do 1000 random moves
+        tempCarArray = sample(self.master.carArray, 1)
+        tempCar = self.master.carArray[tempCarArray[0]]
+        self.generateMove()
+    self.clearBoard()
+    self.drawGrid()
+    self.drawCars()
 
 def main():
     root = Tk()
