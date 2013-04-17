@@ -17,6 +17,9 @@ currentCar = None
 global moved  # Checks if a move was made, for use in 
 moved = False
 
+global moveNum  # Used to index the moves done.
+moveNum = 0
+
 class Board:
     master = None
     def __init__(self, master):        
@@ -32,6 +35,10 @@ class Board:
         master.cellwidth = (int)(master.canvas.cget('width')) / master.columns
         master.cellheight = (int)(master.canvas.cget('height')) / master.rows
         master.moves = 0
+        
+        self.master.carArray = {}   # Stores all our cars that are on the board
+        self.master.rect = {}       # Stores all the rectangles (grid).
+        self.master.movesDone = {}  # Stores all the moves done up to this point on the board.
 
         master.level = StringVar()
         master.level.set("Level 1 - Beginner")
@@ -74,10 +81,10 @@ class Board:
         print "Next move pressed!"
         
     def solve(self):
-        print "Solve pressed!"
+        solve(self)
         
     def generate(self):
-        print "Generate pressed!"
+        generate(self)  # Call real generate method
         
     def remaining(self):
         return randrange(0, 10)
@@ -103,35 +110,24 @@ class Board:
         self.master.remainingLbl.place(x=620, y=260, height=40, width=160)
 
     def keyPressed(self, event):
-        global moved
+        global moved, currentCar
         self.clearBoard()
         self.drawGrid()
-        self.drawCars()
-        global currentCar
-        if event.char == 'r':
-            self.reset()  # Will make this a physical button at some point
-            return
-        
+        self.drawCars()  
         if currentCar != None:
+            m = None
             if currentCar.direction == 'vert':
                 if event.char == 'w':
-                    currentCar.move(0, -1 * self.master.cellheight)
-                    if (currentCar.checkForCollisions(self.master)) or (currentCar.ymax > self.master.columns * self.master.cellheight) or (currentCar.ymin < 0):
-                        currentCar.move(0, 1 * self.master.cellheight)                        
+                    m = Move(self, -1 * self.master.cellheight)        
                 if event.char == 's':
-                    currentCar.move(0, 1 * self.master.cellheight)
-                    if (currentCar.checkForCollisions(self.master)) or (currentCar.ymax > self.master.columns * self.master.cellheight) or (currentCar.ymin < 0):
-                        currentCar.move(0, -1 * self.master.cellheight)
+                    m = Move(self, 1 * self.master.cellheight)
             if currentCar.direction == 'horiz':
                 if event.char == 'a':
-                    currentCar.move(-1 * self.master.cellwidth, 0)
-                    if (currentCar.checkForCollisions(self.master)) or (currentCar.xmax > self.master.columns * self.master.cellwidth) or (currentCar.xmin < 0):
-                        currentCar.move(1 * self.master.cellwidth, 0)
+                    m = Move(self, -1 * self.master.cellwidth)
                 if event.char == 'd':
-                    currentCar.move(1 * self.master.cellwidth, 0)
-                    if (currentCar.checkForCollisions(self.master)) or (currentCar.xmax > self.master.columns * self.master.cellwidth) or (currentCar.xmin < 0):
-                        currentCar.move(-1 * self.master.cellwidth, 0)
-            moved = True
+                    m = Move(self, 1 * self.master.cellwidth)
+            if m != None:
+                currentCar.doMove(m)
         self.clearBoard()
         self.drawGrid()
         self.drawCars()
@@ -157,12 +153,19 @@ class Board:
 #                 return    # Doesn't uncolor all cars right if I return early.
     
     def checkForWin(self):
+        global moved
         for i in self.master.carArray:
             car = self.master.carArray[i]
             if car.xmax >= self.master.columns * self.master.cellwidth and car.ymin == self.master.winrow * self.master.cellheight and car.direction == 'horiz':
-                winBox = tkMessageBox.showinfo("Win Message", "Congratulations, you won!")
+                winBox = tkMessageBox.showinfo("Win Message", "Congratulations! You took: " + str(self.master.moves+1) + " moves.")
                 self.reset()
-                target=winsound.PlaySound('fanfare.wav', winsound.SND_FILENAME)            
+                target=winsound.PlaySound('fanfare.wav', winsound.SND_FILENAME)
+                moved = False
+                print self.listMoves()
+#                 i = 0
+#                 for index in self.master.movesDone:
+#                     i += 1
+#                 print "Things" + str(i) # Right now, prints out the total number of moves done. Find a better way to do this.
 
     def drawGrid(self):
         for column in range(self.master.columns):
@@ -180,7 +183,7 @@ class Board:
         # There are no initial collisions, so draw for real
         for index in self.master.carArray:
             if self.master.carArray[index] != None:
-                self.master.carArray[index].draw(self.master)
+                self.master.carArray[index].draw()
 
     def loadCars(self):
         # read in the lines from the file
@@ -198,11 +201,15 @@ class Board:
             
     def clearBoard(self):
         self.master.canvas.delete(ALL)
+        
+    def listMoves(self):
+        return self.master.movesDone
     
 class Car(object):
+    master, xmin, xmax, ymin, ymax, color, direction, tags = None, 0, 0, 0, 0, "", "", ""
     # construtor
-    xmin, xmax, ymin, ymax, color, direction, tags = 0, 0, 0, 0, "", "", ""
     def __init__(self, master, name, xmin, ymin, xmax, ymax):
+        self.master = master
         self.length = max(xmax - xmin, ymax - ymin)
         self.xmin = xmin * master.cellwidth
         self.ymin = ymin * master.cellheight
@@ -212,11 +219,11 @@ class Car(object):
         self.direction = "horiz" if self.xmax - self.xmin > self.ymax - self.ymin else "vert"
     
     # draws a car on the board
-    def draw(self, master):
+    def draw(self):
         if self.tags == 'current':
-            master.rect[self.xmin, self.ymin] = master.canvas.create_rectangle(self.xmin + 5, self.ymin + 5, self.xmax - 5, self.ymax - 5, fill=self.color, tags=self.tags, outline='black', width=5)
+            self.master.rect[self.xmin, self.ymin] = self.master.canvas.create_rectangle(self.xmin + 5, self.ymin + 5, self.xmax - 5, self.ymax - 5, fill=self.color, tags=self.tags, outline='black', width=5)
         else:
-            master.rect[self.xmin, self.ymin] = master.canvas.create_rectangle(self.xmin + 5, self.ymin + 5, self.xmax - 5, self.ymax - 5, fill=self.color, tags=self.tags)
+            self.master.rect[self.xmin, self.ymin] = self.master.canvas.create_rectangle(self.xmin + 5, self.ymin + 5, self.xmax - 5, self.ymax - 5, fill=self.color, tags=self.tags)
        
     # checks if two cars are colliding
     def isColliding(self, car2):
@@ -224,21 +231,59 @@ class Car(object):
             or ((self.xmax > car2.xmin and self.xmax <= car2.xmax) and (self.ymax > car2.ymin and self.ymax <= car2.ymax)):
             return True
         return False
-                
+    
+    # Checks if a move was valid.
+    def validateMove(self, move):
+        global moved, moveNum
+        if (self.checkForCollisions()) or (self.ymax > self.master.columns * self.master.cellheight) or (self.ymin < 0) \
+            or (self.xmax > self.master.columns * self.master.cellwidth) or (self.xmin < 0):
+            self.doMove(Move(move.currentCar, -1 * move.dist))
+        else:
+            moved = True
+            moveNum += 1
+            self.master.movesDone[move.num] = move
+    
     # moves a car somewhere else
-    def move(self, dx, dy):
-        self.xmin += dx
-        self.xmax += dx
-        self.ymin += dy
-        self.ymax += dy
+    def doMove(self, move):
+        if self.direction == "vert":
+            self.ymin += move.dist
+            self.ymax += move.dist
+        elif self.direction == "horiz":
+            self.xmin += move.dist
+            self.xmax += move.dist
+        self.validateMove(move)
+        print move.num
         
-    def checkForCollisions(self, master):
-        for i in master.carArray:
-            car2 = master.carArray[i]
+    def checkForCollisions(self):
+        for i in self.master.carArray:
+            car2 = self.master.carArray[i]
             if self != car2 and self.isColliding(car2):
                 return True
         return False
-           
+       
+class Move(object):
+    currentCar, dist, num = None, 0, 0
+    # constructor
+    def __init__(self, currentCar, dist):
+        global moveNum
+        self.currentCar = currentCar
+        self.dist = dist
+        self.num = moveNum
+        
+class Node(object):
+    movesDone, carArray = None, None
+    def __init__(self, movesDone, carArray):
+        self.movesDone = movesDone
+        self.carArray = carArray
+
+def solve(board):
+    print "OK! Solving now."
+    # WRITE THIS
+    
+def generate(board):
+    print "OK! Generating now."
+    # WRITE THIS
+
 def main():
     root = Tk()
     root.geometry('800x600+0+0')  # Make this be parameters + buffer space
