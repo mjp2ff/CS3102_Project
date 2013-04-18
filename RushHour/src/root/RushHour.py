@@ -198,7 +198,7 @@ class Board:
     def clearBoard(self):
         self.master.canvas.delete(ALL)
     
-    # Generates a valid move and executes it.
+    # Generates a valid move.
     def generateMove(self):
         while True:
             randCarArray = sample(self.master.carArray, 1)
@@ -307,30 +307,38 @@ def solve(board):
     # WRITE THIS
     
 def generate(board):                 # Takes in a board as a parameter
-    #MAKE SURE TO CHECK IF ITS SOLVED EVERY STEP
-    # WRITE THIS
     board.master.level.set("SolvedBoard")
     board.reset()
     seenNodes = []
     curNode = Node(board.master.movesDone, board.master.carArray)
     seenNodes.append(curNode)
-    numTries = 0
+    wrong = False
     k = 0
-    while k < 100:   # Do 10 random moves
+    numTries = 0
+    while k < 1000:   # Do 10 random moves
         nextMove = board.generateMove()                # FIX GENERATE LATER
         nextMove.currentCar.doMove(nextMove)
         curNode = Node(board.master.movesDone, board.master.carArray)
         for n in seenNodes:
             if curNode.same(n):
                 nextMove.currentCar.doMove(nextMove.getOpposite())
+                wrong = True
                 numTries += 1
-                if numTries > 20:
-                    break
-                print numTries
-                continue
-        numTries = 0
-        seenNodes.append(curNode)
-        k += 1
+        if not wrong:
+            numTries = 0
+            seenNodes.append(curNode)
+            k += 1
+        if numTries > 10:
+            print "RESET"
+            board.master.level.set("SolvedBoard")
+            board.reset()
+            seenNodes = []
+            curNode = Node(board.master.movesDone, board.master.carArray)
+            seenNodes.append(curNode)
+            k = 0
+            numTries = 0
+        print str(numTries) + " " + str(wrong)
+        wrong = False
         
     board.clearBoard()
     board.drawGrid()
