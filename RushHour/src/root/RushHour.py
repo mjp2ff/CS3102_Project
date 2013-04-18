@@ -119,17 +119,17 @@ class Board:
             m = None
             if currentCar.direction == 'vert':
                 if event.char == 'w':
-                    m = Move(self, -1)        
+                    m = Move(currentCar, -1)        
                 if event.char == 's':
-                    m = Move(self, 1)
+                    m = Move(currentCar, 1)
             if currentCar.direction == 'horiz':
                 if event.char == 'a':
-                    m = Move(self, -1)
+                    m = Move(currentCar, -1)
                 if event.char == 'd':
-                    m = Move(self, 1)
+                    m = Move(currentCar, 1)
             if m != None:
-                currentCar.doMove(m)
-                currentCar.validateMove(m)
+                m.currentCar.doMove(m)
+                m.currentCar.validateMove(m)
         self.clearBoard()
         self.drawGrid()
         self.drawCars()
@@ -208,11 +208,11 @@ class Board:
                 return tempMove
     
     #Checks board for collisions.            
-    def checkForCollisions(self):
-        for i in self.master.carArray:
-            car1 = self.master.carArray[i]
-            for j in self.master.carArray:
-                car2 = self.master.carArray[j]
+    def checkForCollisions(self, carArray):
+        for i in carArray:
+            car1 = carArray[i]
+            for j in carArray:
+                car2 = carArray[j]
                 if car1 != car2 and car1.isColliding(car2):
                     return True
         return False
@@ -245,24 +245,24 @@ class Car(object):
             return True
         return False
     
-    # Checks if a made move was valid. If it wasn't it reverses that move. Adds it to movesDone.
+    # Checks if a made move was valid. If it wasn't it reverses that move. DOES NOT ADD IT TO MOVESDONE ANYMORE
     def validateMove(self, move):
         global moved, moveNum
-        if (self.board.checkForCollisions()) or (self.ymax > self.board.master.columns * self.board.master.cellheight) or (self.ymin < 0) \
+        if (self.board.checkForCollisions(self.board.master.carArray)) or (self.ymax > self.board.master.columns * self.board.master.cellheight) or (self.ymin < 0) \
             or (self.xmax > self.board.master.columns * self.board.master.cellwidth) or (self.xmin < 0):
             self.doMove(Move(move.currentCar, -1 * move.dist))
             return False
         else:
             moved = True
             moveNum += 1
-            self.board.master.movesDone.append(move)
+#             self.board.master.movesDone.append(move)
             return True
         
     # Checks whether a potential move would be valid. Changes nothing.
     def checkMove(self, move):
         self.doMove(move)
         good = True
-        if (self.board.checkForCollisions()) or (self.ymax > self.board.master.columns * self.board.master.cellheight) or (self.ymin < 0) \
+        if (self.board.checkForCollisions(self.board.master.carArray)) or (self.ymax > self.board.master.columns * self.board.master.cellheight) or (self.ymin < 0) \
             or (self.xmax > self.board.master.columns * self.board.master.cellwidth) or (self.xmin < 0):
             good = False
         self.doMove(move.getOpposite())
@@ -279,106 +279,130 @@ class Car(object):
 #         print move.num # WORK ON MOVENUM TO MAKE IT BETTER
     
 class Move(object):
-    currentCar, dist, num = None, 0, 0
+    currentCar, dist = None, 0
     # constructor
     def __init__(self, currentCar, dist):
         global moveNum
         self.currentCar = currentCar
         self.dist = dist
-        self.num = moveNum
         
     def getOpposite(self):
         reverse = Move(self.currentCar, -1*self.dist)
         return reverse
         
 class Node(object):
-    strval = ""
-    def __init__(self, movesDone, carArray):
+    carArray, strval, movesDone = None, "", None
+    def __init__(self, carArray, movesDone):
         self.carArray = carArray
-        for index in carArray:
-            self.strval += str(carArray[index].xmin) + str(carArray[index].xmax) + str(carArray[index].ymin) + str(carArray[index].ymax)
+        for index in self.carArray:
+            self.strval += str(self.carArray[index].xmin) + " " + str(self.carArray[index].xmax) + " " + str(self.carArray[index].ymin) + " " + str(self.carArray[index].ymax)
         self.movesDone = movesDone
         
     def same(self, node2):
         return self.strval == node2.strval
         return True
 
+def deepCopyNode(otherNode):
+    x = {}
+    y = []
+    s = ""
+    for index in otherNode.carArray:
+        x[index] = otherNode.carArray[index]
+    for thing in otherNode.movesDone:
+        y.append(thing)
+    return Node(x, y)
+
+def deepCopyCar(acar):
+    copy = Car(acar.board, acar.name, acar.xmin/acar.board.master.cellwidth, acar.ymin/acar.board.master.cellheight, acar.xmax/acar.board.master.cellwidth, acar.x.ymax/acar.board.master.cellheight)
+    return copy
+
 def solve(board):
     print "Okay! Solving now."
     q = Queue.Queue()
-    start = Node(board.master.movesDone, board.master.carArray)
+    start = Node(board.master.carArray, board.master.movesDone)
     q.put(start)
     solFound = False
     solution = []
     
-    while (q.qsize()!=0 and solFound == False):
+#     while (q.qsize()!=0 and solFound == False):
+    for index in range(100):
         print "The queue size is: " + str(q.qsize())
         n = q.get()
+        solution = n.movesDone
         for i in n.carArray:
             car = n.carArray[i]
             if car.xmax >= board.master.columns * board.master.cellwidth and car.ymin == board.master.winrow * board.master.cellheight and car.direction == 'horiz':
-               solution = n.movesDone
-               solFound = True
-               print "Yay I did it!"
+                solution = n.movesDone
+                solFound = True
+                print "Yay I did it!"
                
         for i in n.carArray:
+            if solFound:
+                break
             print "checking car" + str(i)
-            car = n.carArray[i];
+            car = n.carArray[i]
             maxMoves = 4
             counter = 0
             
-            # Try moving up/right
+            # Try moving down/right
             while counter != maxMoves:
                 print "checking pos"
-                newMove = Move(car, counter+1)
+                newMove = Move(car, counter + 1)
                 newMove.currentCar.doMove(newMove)
-                if (board.checkForCollisions):
-                    newMove.currentCar.doMove(newMove.getOpposite())
+                if not newMove.currentCar.validateMove(newMove):
                     print "collides!" + str(counter) + " "
                     break;
                 else:
                     newMove.currentCar.doMove(newMove.getOpposite())
-                    p = copy.deepcopy(n)
-                    p.movesDone.append(newMove)
+                    p = deepCopyNode(n)
+                    p.movesDone.append(Move(newMove.currentCar, newMove.dist))
                     q.put(p)
                     print "put something in queue"
                 counter = counter + 1
-            
+                
             counter = 0
-            # Try moving down/left
+            # Try moving up/left
             while counter != maxMoves:
                 print "checking neg"
                 newMove = Move(car, -1*(counter+1))
                 newMove.currentCar.doMove(newMove)
-                if (board.checkForCollisions):
-                    newMove.currentCar.doMove(newMove.getOpposite())
+                if not newMove.currentCar.validateMove(newMove):
                     print "collides!" + str(counter)
                     break;
                 else:
                     newMove.currentCar.doMove(newMove.getOpposite())
-                    p = copy.deepcopy(n)
-                    p.movesDone.append(newMove)
+                    p = deepCopyNode(n)
+                    p.movesDone.append(Move(newMove.currentCar, newMove.dist))
                     q.put(p)
                     print "put something in queue"
                 counter = counter + 1
         print "The queue size is: " + str(q.qsize())
+    
     for move in solution:
+        print "HI"
+        print move.currentCar.name
+        print move.dist
         move.currentCar.doMove(move)
-        time.sleep(1)
+#         time.sleep(1)
+    print len(solution)
+    board.clearBoard()
+    board.drawGrid()
+    board.drawCars()
+    board.checkForWin()
     
 def generate(board):                 # Takes in a board as a parameter
     board.master.level.set("SolvedBoard")
     board.reset()
     seenNodes = []
-    curNode = Node(board.master.movesDone, board.master.carArray)
+    curNode = Node(board.master.carArray, board.master.movesDone)
     seenNodes.append(curNode)
     wrong = False
     k = 0
     numTries = 0
     while k < 1000:   # Do 10 random moves
-        nextMove = board.generateMove()                # FIX GENERATE LATER
+        nextMove = board.generateMove()
         nextMove.currentCar.doMove(nextMove)
-        curNode = Node(board.master.movesDone, board.master.carArray)
+        curNode = Node(board.master.carArray, board.master.movesDone)
         for n in seenNodes:
             if curNode.same(n):
                 nextMove.currentCar.doMove(nextMove.getOpposite())
@@ -392,7 +416,7 @@ def generate(board):                 # Takes in a board as a parameter
             board.master.level.set("SolvedBoard")
             board.reset()
             seenNodes = []
-            curNode = Node(board.master.movesDone, board.master.carArray)
+            curNode = Node(board.master.carArray, board.master.movesDone)
             seenNodes.append(curNode)
             k = 0
             numTries = 0
@@ -401,6 +425,9 @@ def generate(board):                 # Takes in a board as a parameter
     board.clearBoard()
     board.drawGrid()
     board.drawCars()
+    
+    copy = Car(acar.board, acar.name, acar.xmin/acar.board.master.cellwidth, acar.ymin/acar.board.master.cellheight, acar.xmax/acar.board.master.cellwidth, acar.x.ymax/acar.board.master.cellheight)
+    return copy
 
 def main():
     root = Tk()
