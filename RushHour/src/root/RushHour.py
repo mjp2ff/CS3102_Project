@@ -49,8 +49,6 @@ class Board:
             "Level 31 - Expert", "Level 32 - Expert", "Level 33 - Expert", "Level 34 - Expert", "Level 35 - Expert", \
             "Level 41 - Insane", "Level 42 - Insane", "Level 43 - Insane", "Level 44 - Insane", "Level 45 - Insane", \
             "Level 46 - Insane", "Level 47 - Insane", "Level 48 - Insane", "Level 49 - Insane", "Level 50 - Insane", \
-            "Level 51 - Insane", "Level 52 - Insane", "Level 53 - Insane", "Level 54 - Insane", "Level 55 - Insane", \
-            "Level 56 - Insane", "Level 57 - Insane", "Level 58 - Insane", "Level 59 - Insane", "Level 60 - Insane", \
             command=self.resetEvent)
 #         master.menu.pack(side="top", fill=X)
         master.menu.place(x=610, y=10, height=80, width=180)
@@ -329,7 +327,6 @@ def generate(board):                 # Takes in a board as a parameter
             seenNodes.append(curNode)
             k += 1
         if numTries > 10:
-            print "RESET"
             board.master.level.set("SolvedBoard")
             board.reset()
             seenNodes = []
@@ -337,7 +334,6 @@ def generate(board):                 # Takes in a board as a parameter
             seenNodes.append(curNode)
             k = 0
             numTries = 0
-        print str(numTries) + " " + str(wrong)
         wrong = False
         
     board.clearBoard()
