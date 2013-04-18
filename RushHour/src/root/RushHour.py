@@ -7,6 +7,8 @@ from Tkinter import *
 from random import randrange, sample
 import tkMessageBox
 import winsound
+import time
+from multiprocessing import Process, Queue
 from copy import deepcopy
 # from sys import argv
 # import time
@@ -292,6 +294,7 @@ class Move(object):
 class Node(object):
     strval = ""
     def __init__(self, movesDone, carArray):
+        self.carArray = carArray
         for index in carArray:
             self.strval += str(carArray[index].xmin) + str(carArray[index].xmax) + str(carArray[index].ymin) + str(carArray[index].ymax)
         self.movesDone = movesDone
@@ -301,8 +304,67 @@ class Node(object):
         return True
 
 def solve(board):
-    print "OK! Solving now."
-    # WRITE THIS
+    print "Okay! Solving now."
+    q = Queue()
+    start = Node(board.master.movesDone, board.master.carArray)
+    q.put(start)
+    solFound = False
+    solution = []
+    
+    while (q.qsize()!=0 and solFound == False):
+        print "The queue size is: " + str(q.qsize())
+        n = q.get()
+        for i in n.carArray:
+            car = n.carArray[i]
+            if car.xmax >= self.master.columns * self.master.cellwidth and car.ymin == self.master.winrow * self.master.cellheight and car.direction == 'horiz':
+               solution = n.movesDone
+               solFound = True
+               print "Yay I did it!"
+        newMoves = []
+        print n.carArray
+        for i in n.carArray:
+            print "checking car" + str(i)
+            car = n.carArray[i];
+            maxMoves = 4
+            counter = 0
+            
+            # Try moving up/right
+            while counter != maxMoves:
+                print "checking pos"
+                newMove = Move(car, counter+1)
+                newMove.car.doMove(newMove)
+                if (board.checkForCollisions):
+                    newMove.car.doMove(nextMove.opposite())
+                    break;
+                else:
+                    newMove.car.doMove(nextMove.opposite())
+                    p = copy.deepcopy(n)
+                    p.movesDone.append(newMove)
+                    q.put(p)
+                    print "put something in queue"
+                counter = counter + 1
+            
+            counter = 0
+            # Try moving down/left
+            while counter != maxMoves:
+                print "checking neg"
+                newMove = Move(car, -1*(counter+1))
+                newMove.car.doMove(newMove)
+                if (board.checkForCollisions):
+                    newMove.car.doMove(nextMove.opposite())
+                    break;
+                else:
+                    newMove.car.doMove(nextMove.opposite())
+                    p = copy.deepcopy(n)
+                    p.movesDone.append(newMove)
+                    q.put(p)
+                    print "put something in queue"
+                counter = counter + 1
+        print "The queue size is: " + str(q.qsize())
+    for move in solution:
+        curCar = move.currentCar
+        move.curCar.doMove(move)
+        time.sleep(1)
     
 def generate(board):                 # Takes in a board as a parameter
     board.master.level.set("SolvedBoard")
