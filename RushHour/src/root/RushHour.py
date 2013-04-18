@@ -334,7 +334,7 @@ def solve(board):
                 newMove.currentCar.doMove(newMove)
                 if (board.checkForCollisions):
                     newMove.currentCar.doMove(newMove.getOpposite())
-                    print "collides!" + str(counter)
+                    print "collides!" + str(counter) + " "
                     break;
                 else:
                     newMove.currentCar.doMove(newMove.getOpposite())

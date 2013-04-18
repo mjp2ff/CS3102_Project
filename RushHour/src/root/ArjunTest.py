@@ -8,7 +8,7 @@ from random import randrange, sample
 import tkMessageBox
 import winsound
 import time
-from multiprocessing import Process, Queue
+import Queue
 from copy import deepcopy
 # from sys import argv
 # import time
@@ -51,8 +51,6 @@ class Board:
             "Level 31 - Expert", "Level 32 - Expert", "Level 33 - Expert", "Level 34 - Expert", "Level 35 - Expert", \
             "Level 41 - Insane", "Level 42 - Insane", "Level 43 - Insane", "Level 44 - Insane", "Level 45 - Insane", \
             "Level 46 - Insane", "Level 47 - Insane", "Level 48 - Insane", "Level 49 - Insane", "Level 50 - Insane", \
-            "Level 51 - Insane", "Level 52 - Insane", "Level 53 - Insane", "Level 54 - Insane", "Level 55 - Insane", \
-            "Level 56 - Insane", "Level 57 - Insane", "Level 58 - Insane", "Level 59 - Insane", "Level 60 - Insane", \
             command=self.resetEvent)
 #         master.menu.pack(side="top", fill=X)
         master.menu.place(x=610, y=10, height=80, width=180)
@@ -161,9 +159,6 @@ class Board:
             car = self.master.carArray[i]
             if car.xmax >= self.master.columns * self.master.cellwidth and car.ymin == self.master.winrow * self.master.cellheight and car.direction == 'horiz':
                 winBox = tkMessageBox.showinfo("Win Message", "Congratulations! You took: " + str(self.master.moves+1) + " moves.")
-                if self.master.level.get() == "SolvedBoard":
-                    print "HI"
-                    self.master.level.set("Level 1 - Beginner")
                 self.reset()
                 target=winsound.PlaySound('fanfare.wav', winsound.SND_FILENAME)
                 moved = False
@@ -310,7 +305,7 @@ class Node(object):
 
 def solve(board):
     print "Okay! Solving now."
-    q = Queue()
+    q = Queue.Queue()
     start = Node(board.master.movesDone, board.master.carArray)
     q.put(start)
     solFound = False
@@ -321,12 +316,11 @@ def solve(board):
         n = q.get()
         for i in n.carArray:
             car = n.carArray[i]
-            if car.xmax >= self.master.columns * self.master.cellwidth and car.ymin == self.master.winrow * self.master.cellheight and car.direction == 'horiz':
+            if car.xmax >= board.master.columns * board.master.cellwidth and car.ymin == board.master.winrow * board.master.cellheight and car.direction == 'horiz':
                solution = n.movesDone
                solFound = True
                print "Yay I did it!"
-        newMoves = []
-        print n.carArray
+               
         for i in n.carArray:
             print "checking car" + str(i)
             car = n.carArray[i];
@@ -337,12 +331,13 @@ def solve(board):
             while counter != maxMoves:
                 print "checking pos"
                 newMove = Move(car, counter+1)
-                newMove.car.doMove(newMove)
+                newMove.currentCar.doMove(newMove)
                 if (board.checkForCollisions):
-                    newMove.car.doMove(nextMove.opposite())
+                    newMove.currentCar.doMove(newMove.getOpposite())
+                    print "collides!" + str(counter) + " "
                     break;
                 else:
-                    newMove.car.doMove(nextMove.opposite())
+                    newMove.currentCar.doMove(newMove.getOpposite())
                     p = copy.deepcopy(n)
                     p.movesDone.append(newMove)
                     q.put(p)
@@ -354,12 +349,13 @@ def solve(board):
             while counter != maxMoves:
                 print "checking neg"
                 newMove = Move(car, -1*(counter+1))
-                newMove.car.doMove(newMove)
+                newMove.currentCar.doMove(newMove)
                 if (board.checkForCollisions):
-                    newMove.car.doMove(nextMove.opposite())
+                    newMove.currentCar.doMove(newMove.getOpposite())
+                    print "collides!" + str(counter)
                     break;
                 else:
-                    newMove.car.doMove(nextMove.opposite())
+                    newMove.currentCar.doMove(newMove.getOpposite())
                     p = copy.deepcopy(n)
                     p.movesDone.append(newMove)
                     q.put(p)
@@ -367,11 +363,8 @@ def solve(board):
                 counter = counter + 1
         print "The queue size is: " + str(q.qsize())
     for move in solution:
-        curCar = move.currentCar
-        move.curCar.doMove(move)
+        move.currentCar.doMove(move)
         time.sleep(1)
-                
-        
     
 def generate(board):                 # Takes in a board as a parameter
     board.master.level.set("SolvedBoard")
@@ -382,8 +375,8 @@ def generate(board):                 # Takes in a board as a parameter
     wrong = False
     k = 0
     numTries = 0
-    while k < 1000:   # Do 1000 random moves
-        nextMove = board.generateMove()
+    while k < 1000:   # Do 10 random moves
+        nextMove = board.generateMove()                # FIX GENERATE LATER
         nextMove.currentCar.doMove(nextMove)
         curNode = Node(board.master.movesDone, board.master.carArray)
         for n in seenNodes:
@@ -396,7 +389,6 @@ def generate(board):                 # Takes in a board as a parameter
             seenNodes.append(curNode)
             k += 1
         if numTries > 10:
-            print "RESET"
             board.master.level.set("SolvedBoard")
             board.reset()
             seenNodes = []
@@ -404,7 +396,6 @@ def generate(board):                 # Takes in a board as a parameter
             seenNodes.append(curNode)
             k = 0
             numTries = 0
-        print str(numTries) + " " + str(wrong)
         wrong = False
         
     board.clearBoard()
