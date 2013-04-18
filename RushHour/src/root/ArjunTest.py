@@ -323,6 +323,7 @@ def solve(board):
     q.put(start)
     solFound = False
     solution = []
+    newCarArray = {}
     sizeOfSet = 0
     
     while (q.qsize()!=0 and solFound == False):
@@ -336,10 +337,14 @@ def solve(board):
             sizeOfSet = sizeOfSet + 1
         for i in n.carArray:
             car = n.carArray[i]
-            if car.xmax >= board.master.columns * board.master.cellwidth and car.ymin == board.master.winrow * board.master.cellheight and car.direction == 'horiz':
+            if car.xmax >= board.master.columns * board.master.cellwidth and car.ymin == board.master.winrow * board.master.cellheight and car.direction == 'horiz' and car.name == "Goal":
                 solution = n.movesDone
+                newCarArray = n.carArray
                 solFound = True
-               
+                print "YAY!!!! FINALLY!!!!!!!!"
+        
+        if solFound:
+            break;
         for i in n.carArray:
             print "checking car" + str(i)
             car = n.carArray[i];
@@ -360,14 +365,17 @@ def solve(board):
                     newCarArray = {}
                     curr = 0
                     for index in n.carArray:
-                        newCar = Car(n.board, deepcopy(n.carArray[index].name), deepcopy(n.carArray[index].xmin), deepcopy(n.carArray[index].ymin), deepcopy(n.carArray[index].xmax), deepcopy(n.carArray[index].ymax))
+#                         newCar = Car(n.board, deepcopy(n.carArray[index].name), deepcopy(n.carArray[index].xmin), deepcopy(n.carArray[index].ymin), deepcopy(n.carArray[index].xmax), deepcopy(n.carArray[index].ymax))
+                        newCar = deepCopyCar(n.carArray[index])
                         newCarArray[index] = newCar
                     for move in n.movesDone:
-                        newCar = Car(n.board, deepcopy(move.currentCar.name), deepcopy(move.currentCar.xmin), deepcopy(move.currentCar.ymin), deepcopy(move.currentCar.xmax), deepcopy(move.currentCar.ymax))
+#                         newCar = Car(n.board, deepcopy(move.currentCar.name), deepcopy(move.currentCar.xmin), deepcopy(move.currentCar.ymin), deepcopy(move.currentCar.xmax), deepcopy(move.currentCar.ymax))
+                        newCar = deepCopyCar(move.currentCar)
                         newMove = Move(newCar, deepcopy(move.dist))
                         newMovesDone.append(newMove)
                     p = Node(newMovesDone, newCarArray, board)
                     p.movesDone.append(newMove)
+                    # IMPORTANT: NOTE THAT THIS MOVE DOES NOT REFLECT IN P's CAR ARRAY
                     q.put(p)
                     newMove.currentCar.doMove(newMove.getOpposite())
                     print "put something in queue"
@@ -388,10 +396,12 @@ def solve(board):
                     newCarArray = {}
                     curr = 0
                     for index in n.carArray:
-                        newCar = Car(n.board, deepcopy(n.carArray[index].name), deepcopy(n.carArray[index].xmin), deepcopy(n.carArray[index].ymin), deepcopy(n.carArray[index].xmax), deepcopy(n.carArray[index].ymax))
+#                         newCar = Car(n.board, deepcopy(n.carArray[index].name), deepcopy(n.carArray[index].xmin)/n.board.master.cellwidth, deepcopy(n.carArray[index].ymin)/n.board.master.cellwidth, deepcopy(n.carArray[index].xmax)/n.board.master.cellwidth, deepcopy(n.carArray[index].ymax)/n.board.master.cellwidth)
+                        newCar = deepCopyCar(n.carArray[index])
                         newCarArray[index] = newCar
                     for move in n.movesDone:
-                        newCar = Car(n.board, deepcopy(move.currentCar.name), deepcopy(move.currentCar.xmin), deepcopy(move.currentCar.ymin), deepcopy(move.currentCar.xmax), deepcopy(move.currentCar.ymax))
+#                         newCar = Car(n.board, deepcopy(move.currentCar.name), deepcopy(move.currentCar.xmin)/n.board.master.cellwidth, deepcopy(move.currentCar.ymin)/n.board.master.cellwidth, deepcopy(move.currentCar.xmax)/n.board.master.cellwidth, deepcopy(move.currentCar.ymax)/n.board.master.cellwidth)
+                        newCar = deepCopyCar(move.currentCar)
                         newMove = Move(newCar, deepcopy(move.dist))
                         newMovesDone.append(newMove)
                     p = Node(newMovesDone, newCarArray, board)
@@ -401,13 +411,16 @@ def solve(board):
                     print "put something in queue"
                 counter = counter + 1
         print "The queue size is: " + str(q.qsize())
-        
+    
     for move in solution:
-        move.currentCar.doMove(move)
-        board.clearBoard()
-        board.drawGrid()
-        board.drawCars()
-        time.sleep(1)
+        for index in board.master.carArray:
+            if move.currentCar.name == board.master.carArray[index].name:
+                board.master.carArray[index].doMove(move)
+                board.clearBoard()
+                board.drawGrid()
+                board.drawCars()
+                board.checkForWin()
+                board.master.after(100)
     
 def generate(board):                 # Takes in a board as a parameter
     board.master.level.set("SolvedBoard")
@@ -444,6 +457,10 @@ def generate(board):                 # Takes in a board as a parameter
     board.clearBoard()
     board.drawGrid()
     board.drawCars()
+
+def deepCopyCar(acar):
+    copy = Car(acar.board, acar.name, acar.xmin/acar.board.master.cellwidth, acar.ymin/acar.board.master.cellheight, acar.xmax/acar.board.master.cellwidth, acar.ymax/acar.board.master.cellheight)
+    return copy
 
 def main():
     root = Tk()
