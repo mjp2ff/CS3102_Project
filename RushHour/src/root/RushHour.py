@@ -10,6 +10,7 @@ import winsound
 import time
 import Queue
 from copy import deepcopy
+import Solver
 # from sys import argv
 # import time
 
@@ -302,93 +303,29 @@ class Node(object):
         return self.strval == node2.strval
         return True
 
-def deepCopyNode(otherNode):
-    x = {}
-    y = []
-    s = ""
-    for index in otherNode.carArray:
-        x[index] = otherNode.carArray[index]
-    for thing in otherNode.movesDone:
-        y.append(thing)
-    return Node(x, y)
-
-def deepCopyCar(acar):
-    copy = Car(acar.board, acar.name, acar.xmin/acar.board.master.cellwidth, acar.ymin/acar.board.master.cellheight, acar.xmax/acar.board.master.cellwidth, acar.x.ymax/acar.board.master.cellheight)
+def deepCopyNode(aNode):
+    cars = {}
+    moves = []
+    for index in aNode.carArray:
+        cars[index] = aNode.carArray[index]
+    for move in aNode.movesDone:
+        moves.append(deepCopyMove(move))
+    copy = Node(cars, moves)
     return copy
 
-def solve(board):
-    print "Okay! Solving now."
-    q = Queue.Queue()
-    start = Node(board.master.carArray, board.master.movesDone)
-    q.put(start)
-    solFound = False
-    solution = []
-    
-#     while (q.qsize()!=0 and solFound == False):
-    for index in range(100):
-        print "The queue size is: " + str(q.qsize())
-        n = q.get()
-        solution = n.movesDone
-        for i in n.carArray:
-            car = n.carArray[i]
-            if car.xmax >= board.master.columns * board.master.cellwidth and car.ymin == board.master.winrow * board.master.cellheight and car.direction == 'horiz':
-                solution = n.movesDone
-                solFound = True
-                print "Yay I did it!"
-               
-        for i in n.carArray:
-            if solFound:
-                break
-            print "checking car" + str(i)
-            car = n.carArray[i]
-            maxMoves = 4
-            counter = 0
-            
-            # Try moving down/right
-            while counter != maxMoves:
-                print "checking pos"
-                newMove = Move(car, counter + 1)
-                newMove.currentCar.doMove(newMove)
-                if not newMove.currentCar.validateMove(newMove):
-                    print "collides!" + str(counter) + " "
-                    break;
-                else:
-                    newMove.currentCar.doMove(newMove.getOpposite())
-                    p = deepCopyNode(n)
-                    p.movesDone.append(Move(newMove.currentCar, newMove.dist))
-                    q.put(p)
-                    print "put something in queue"
-                counter = counter + 1
-                
-            counter = 0
-            # Try moving up/left
-            while counter != maxMoves:
-                print "checking neg"
-                newMove = Move(car, -1*(counter+1))
-                newMove.currentCar.doMove(newMove)
-                if not newMove.currentCar.validateMove(newMove):
-                    print "collides!" + str(counter)
-                    break;
-                else:
-                    newMove.currentCar.doMove(newMove.getOpposite())
-                    p = deepCopyNode(n)
-                    p.movesDone.append(Move(newMove.currentCar, newMove.dist))
-                    q.put(p)
-                    print "put something in queue"
-                counter = counter + 1
-        print "The queue size is: " + str(q.qsize())
-    
-    for move in solution:
-        print "HI"
-        print move.currentCar.name
-        print move.dist
-        move.currentCar.doMove(move)
-#         time.sleep(1)
-    print len(solution)
+def deepCopyCar(aCar):
+    copy = Car(aCar.board, aCar.name, aCar.xmin/aCar.board.master.cellwidth, aCar.ymin/aCar.board.master.cellheight, aCar.xmax/aCar.board.master.cellwidth, aCar.ymax/aCar.board.master.cellheight)
+    return copy
+
+def deepCopyMove(aMove):
+    copy = Move(aMove.currentCar, aMove.dist)
+    return copy
+
+def solve(board):    
+    board = Solver.solve(board)
     board.clearBoard()
     board.drawGrid()
     board.drawCars()
-    board.checkForWin()
     
 def generate(board):                 # Takes in a board as a parameter
     board.master.level.set("SolvedBoard")
@@ -425,9 +362,6 @@ def generate(board):                 # Takes in a board as a parameter
     board.clearBoard()
     board.drawGrid()
     board.drawCars()
-    
-    copy = Car(acar.board, acar.name, acar.xmin/acar.board.master.cellwidth, acar.ymin/acar.board.master.cellheight, acar.xmax/acar.board.master.cellwidth, acar.x.ymax/acar.board.master.cellheight)
-    return copy
 
 def main():
     root = Tk()
