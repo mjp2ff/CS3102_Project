@@ -8,7 +8,7 @@ from random import randrange, sample
 import tkMessageBox
 import winsound
 import time
-from multiprocessing import Process, Queue
+import Queue
 from copy import deepcopy
 # from sys import argv
 # import time
@@ -305,7 +305,7 @@ class Node(object):
 
 def solve(board):
     print "Okay! Solving now."
-    q = Queue()
+    q = Queue.Queue()
     start = Node(board.master.movesDone, board.master.carArray)
     q.put(start)
     solFound = False
@@ -316,12 +316,11 @@ def solve(board):
         n = q.get()
         for i in n.carArray:
             car = n.carArray[i]
-            if car.xmax >= self.master.columns * self.master.cellwidth and car.ymin == self.master.winrow * self.master.cellheight and car.direction == 'horiz':
+            if car.xmax >= board.master.columns * board.master.cellwidth and car.ymin == board.master.winrow * board.master.cellheight and car.direction == 'horiz':
                solution = n.movesDone
                solFound = True
                print "Yay I did it!"
-        newMoves = []
-        print n.carArray
+               
         for i in n.carArray:
             print "checking car" + str(i)
             car = n.carArray[i];
@@ -332,12 +331,13 @@ def solve(board):
             while counter != maxMoves:
                 print "checking pos"
                 newMove = Move(car, counter+1)
-                newMove.car.doMove(newMove)
+                newMove.currentCar.doMove(newMove)
                 if (board.checkForCollisions):
-                    newMove.car.doMove(nextMove.opposite())
+                    newMove.currentCar.doMove(newMove.getOpposite())
+                    print "collides!" + str(counter)
                     break;
                 else:
-                    newMove.car.doMove(nextMove.opposite())
+                    newMove.currentCar.doMove(newMove.getOpposite())
                     p = copy.deepcopy(n)
                     p.movesDone.append(newMove)
                     q.put(p)
@@ -349,12 +349,13 @@ def solve(board):
             while counter != maxMoves:
                 print "checking neg"
                 newMove = Move(car, -1*(counter+1))
-                newMove.car.doMove(newMove)
+                newMove.currentCar.doMove(newMove)
                 if (board.checkForCollisions):
-                    newMove.car.doMove(nextMove.opposite())
+                    newMove.currentCar.doMove(newMove.getOpposite())
+                    print "collides!" + str(counter)
                     break;
                 else:
-                    newMove.car.doMove(nextMove.opposite())
+                    newMove.currentCar.doMove(newMove.getOpposite())
                     p = copy.deepcopy(n)
                     p.movesDone.append(newMove)
                     q.put(p)
@@ -362,8 +363,7 @@ def solve(board):
                 counter = counter + 1
         print "The queue size is: " + str(q.qsize())
     for move in solution:
-        curCar = move.currentCar
-        move.curCar.doMove(move)
+        move.currentCar.doMove(move)
         time.sleep(1)
     
 def generate(board):                 # Takes in a board as a parameter
