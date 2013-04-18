@@ -10,6 +10,7 @@ import winsound
 import time
 import Queue
 from copy import deepcopy
+from sets import Set
 # from sys import argv
 # import time
 
@@ -119,14 +120,14 @@ class Board:
             m = None
             if currentCar.direction == 'vert':
                 if event.char == 'w':
-                    m = Move(self, -1)        
+                    m = Move(currentCar, -1)        
                 if event.char == 's':
-                    m = Move(self, 1)
+                    m = Move(currentCar, 1)
             if currentCar.direction == 'horiz':
                 if event.char == 'a':
-                    m = Move(self, -1)
+                    m = Move(currentCar, -1)
                 if event.char == 'd':
-                    m = Move(self, 1)
+                    m = Move(currentCar, 1)
             if m != None:
                 currentCar.doMove(m)
                 currentCar.validateMove(m)
@@ -159,6 +160,8 @@ class Board:
             car = self.master.carArray[i]
             if car.xmax >= self.master.columns * self.master.cellwidth and car.ymin == self.master.winrow * self.master.cellheight and car.direction == 'horiz':
                 winBox = tkMessageBox.showinfo("Win Message", "Congratulations! You took: " + str(self.master.moves+1) + " moves.")
+                if (self.master.level.get() == "SolvedBoard"):
+                    self.master.level.set("Level 1 - Beginner")
                 self.reset()
                 target=winsound.PlaySound('fanfare.wav', winsound.SND_FILENAME)
                 moved = False
@@ -213,6 +216,15 @@ class Board:
             car1 = self.master.carArray[i]
             for j in self.master.carArray:
                 car2 = self.master.carArray[j]
+                if car1 != car2 and car1.isColliding(car2):
+                    return True
+        return False
+    
+    def collisionChecker(self, cars):
+        for i in cars:
+            car1 = cars[i]
+            for j in cars:
+                car2 = cars[j]
                 if car1 != car2 and car1.isColliding(car2):
                     return True
         return False
@@ -293,33 +305,40 @@ class Move(object):
         
 class Node(object):
     strval = ""
-    def __init__(self, movesDone, carArray):
+    def __init__(self, movesDone, carArray, board):
         self.carArray = carArray
         for index in carArray:
             self.strval += str(carArray[index].xmin) + str(carArray[index].xmax) + str(carArray[index].ymin) + str(carArray[index].ymax)
         self.movesDone = movesDone
+        self.board = board
         
     def same(self, node2):
         return self.strval == node2.strval
         return True
 
 def solve(board):
-    print "Okay! Solving now."
     q = Queue.Queue()
-    start = Node(board.master.movesDone, board.master.carArray)
+    seen = Set()
+    start = Node(board.master.movesDone, board.master.carArray, board)
     q.put(start)
     solFound = False
     solution = []
+    sizeOfSet = 0
     
     while (q.qsize()!=0 and solFound == False):
         print "The queue size is: " + str(q.qsize())
+        print "We have seen " + str(sizeOfSet) + " unique nodes"
         n = q.get()
+        if n.strval in seen:
+            continue
+        else:
+            seen.add(n.strval)
+            sizeOfSet = sizeOfSet + 1
         for i in n.carArray:
             car = n.carArray[i]
             if car.xmax >= board.master.columns * board.master.cellwidth and car.ymin == board.master.winrow * board.master.cellheight and car.direction == 'horiz':
-               solution = n.movesDone
-               solFound = True
-               print "Yay I did it!"
+                solution = n.movesDone
+                solFound = True
                
         for i in n.carArray:
             print "checking car" + str(i)
@@ -327,50 +346,74 @@ def solve(board):
             maxMoves = 4
             counter = 0
             
-            # Try moving up/right
+            # Try moving down/right
             while counter != maxMoves:
                 print "checking pos"
                 newMove = Move(car, counter+1)
                 newMove.currentCar.doMove(newMove)
-                if (board.checkForCollisions):
+                if (n.board.collisionChecker(n.carArray)):
                     newMove.currentCar.doMove(newMove.getOpposite())
                     print "collides!" + str(counter) + " "
                     break;
                 else:
-                    newMove.currentCar.doMove(newMove.getOpposite())
-                    p = copy.deepcopy(n)
+                    newMovesDone = []
+                    newCarArray = {}
+                    curr = 0
+                    for index in n.carArray:
+                        newCar = Car(n.board, deepcopy(n.carArray[index].name), deepcopy(n.carArray[index].xmin), deepcopy(n.carArray[index].ymin), deepcopy(n.carArray[index].xmax), deepcopy(n.carArray[index].ymax))
+                        newCarArray[index] = newCar
+                    for move in n.movesDone:
+                        newCar = Car(n.board, deepcopy(move.currentCar.name), deepcopy(move.currentCar.xmin), deepcopy(move.currentCar.ymin), deepcopy(move.currentCar.xmax), deepcopy(move.currentCar.ymax))
+                        newMove = Move(newCar, deepcopy(move.dist))
+                        newMovesDone.append(newMove)
+                    p = Node(newMovesDone, newCarArray, board)
                     p.movesDone.append(newMove)
                     q.put(p)
+                    newMove.currentCar.doMove(newMove.getOpposite())
                     print "put something in queue"
                 counter = counter + 1
             
             counter = 0
-            # Try moving down/left
+            # Try moving up/left
             while counter != maxMoves:
                 print "checking neg"
                 newMove = Move(car, -1*(counter+1))
                 newMove.currentCar.doMove(newMove)
-                if (board.checkForCollisions):
+                if (n.board.collisionChecker(n.carArray)):
                     newMove.currentCar.doMove(newMove.getOpposite())
                     print "collides!" + str(counter)
                     break;
                 else:
-                    newMove.currentCar.doMove(newMove.getOpposite())
-                    p = copy.deepcopy(n)
+                    newMovesDone = []
+                    newCarArray = {}
+                    curr = 0
+                    for index in n.carArray:
+                        newCar = Car(n.board, deepcopy(n.carArray[index].name), deepcopy(n.carArray[index].xmin), deepcopy(n.carArray[index].ymin), deepcopy(n.carArray[index].xmax), deepcopy(n.carArray[index].ymax))
+                        newCarArray[index] = newCar
+                    for move in n.movesDone:
+                        newCar = Car(n.board, deepcopy(move.currentCar.name), deepcopy(move.currentCar.xmin), deepcopy(move.currentCar.ymin), deepcopy(move.currentCar.xmax), deepcopy(move.currentCar.ymax))
+                        newMove = Move(newCar, deepcopy(move.dist))
+                        newMovesDone.append(newMove)
+                    p = Node(newMovesDone, newCarArray, board)
                     p.movesDone.append(newMove)
                     q.put(p)
+                    newMove.currentCar.doMove(newMove.getOpposite())
                     print "put something in queue"
                 counter = counter + 1
         print "The queue size is: " + str(q.qsize())
+        
     for move in solution:
         move.currentCar.doMove(move)
+        board.clearBoard()
+        board.drawGrid()
+        board.drawCars()
         time.sleep(1)
     
 def generate(board):                 # Takes in a board as a parameter
     board.master.level.set("SolvedBoard")
     board.reset()
     seenNodes = []
-    curNode = Node(board.master.movesDone, board.master.carArray)
+    curNode = Node(board.master.movesDone, board.master.carArray, board)
     seenNodes.append(curNode)
     wrong = False
     k = 0
@@ -378,7 +421,7 @@ def generate(board):                 # Takes in a board as a parameter
     while k < 1000:   # Do 10 random moves
         nextMove = board.generateMove()                # FIX GENERATE LATER
         nextMove.currentCar.doMove(nextMove)
-        curNode = Node(board.master.movesDone, board.master.carArray)
+        curNode = Node(board.master.movesDone, board.master.carArray, board)
         for n in seenNodes:
             if curNode.same(n):
                 nextMove.currentCar.doMove(nextMove.getOpposite())
@@ -392,7 +435,7 @@ def generate(board):                 # Takes in a board as a parameter
             board.master.level.set("SolvedBoard")
             board.reset()
             seenNodes = []
-            curNode = Node(board.master.movesDone, board.master.carArray)
+            curNode = Node(board.master.movesDone, board.master.carArray, board)
             seenNodes.append(curNode)
             k = 0
             numTries = 0
