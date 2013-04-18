@@ -4,10 +4,10 @@ Created on Apr 9, 2013
 @author: Matt
 '''
 from Tkinter import *
-from random import randrange, choice, sample
+from random import randrange, sample
 import tkMessageBox
 import winsound
-import threading
+from copy import deepcopy
 # from sys import argv
 # import time
 
@@ -38,7 +38,7 @@ class Board:
         
         self.master.carArray = {}   # Stores all our cars that are on the board
         self.master.rect = {}       # Stores all the rectangles (grid).
-        self.master.movesDone = {}  # Stores all the moves done up to this point on the board.
+        self.master.movesDone = []  # Stores all the moves done up to this point on the board.
 
         master.level = StringVar()
         master.level.set("Level 1 - Beginner")
@@ -94,7 +94,8 @@ class Board:
 
     def resetEvent(self, event):  # This method takes a parameter (for optionmenu)
         self.master.carArray = {}  # Stores all our cars that are on the board
-        self.master.rect = {}  # Stores all the rectangles (grid).
+        self.master.rect = {}  # Stores all the rectangles (grid)
+        self.master.movesDone = []
         self.clearBoard()
         self.drawGrid()
         self.loadCars()
@@ -196,9 +197,6 @@ class Board:
             
     def clearBoard(self):
         self.master.canvas.delete(ALL)
-        
-    def listMoves(self):
-        return self.master.movesDone
     
     # Generates a valid move and executes it.
     def generateMove(self):
@@ -207,8 +205,6 @@ class Board:
             randCar = self.master.carArray[randCarArray[0]]
             tempMove = Move(randCar, randrange(-1, 2, 1))
             if randCar.checkMove(tempMove) and tempMove.dist != 0:
-                randCar.doMove(tempMove)
-                randCar.validateMove(tempMove)
                 return tempMove
     
     #Checks board for collisions.            
@@ -223,7 +219,7 @@ class Board:
             
 class Car(object):
     master, xmin, xmax, ymin, ymax, color, direction, tags = None, 0, 0, 0, 0, "", "", ""
-    # construtor
+    # constructor
     def __init__(self, board, name, xmin, ymin, xmax, ymax):
         self.board = board
         self.name = name
@@ -249,7 +245,7 @@ class Car(object):
             return True
         return False
     
-    # Checks if a made move was valid. If it wasn't it reverses that move.
+    # Checks if a made move was valid. If it wasn't it reverses that move. Adds it to movesDone.
     def validateMove(self, move):
         global moved, moveNum
         if (self.board.checkForCollisions()) or (self.ymax > self.board.master.columns * self.board.master.cellheight) or (self.ymin < 0) \
@@ -259,7 +255,7 @@ class Car(object):
         else:
             moved = True
             moveNum += 1
-            self.board.master.movesDone[move.num] = move
+            self.board.master.movesDone.append(move)
             return True
         
     # Checks whether a potential move would be valid. Changes nothing.
@@ -281,7 +277,7 @@ class Car(object):
             self.xmin += move.dist*self.board.master.cellwidth
             self.xmax += move.dist*self.board.master.cellwidth
 #         print move.num # WORK ON MOVENUM TO MAKE IT BETTER
-               
+    
 class Move(object):
     currentCar, dist, num = None, 0, 0
     # constructor
@@ -296,26 +292,49 @@ class Move(object):
         return reverse
         
 class Node(object):
-    movesDone, carArray = None, None
+    strval = ""
     def __init__(self, movesDone, carArray):
+        for index in carArray:
+            self.strval += str(carArray[index].xmin) + str(carArray[index].xmax) + str(carArray[index].ymin) + str(carArray[index].ymax)
         self.movesDone = movesDone
-        self.carArray = carArray
+        
+    def same(self, node2):
+        return self.strval == node2.strval
+        return True
 
 def solve(board):
     print "OK! Solving now."
     # WRITE THIS
     
-def generate(self):                 # Takes in a board as a parameter
+def generate(board):                 # Takes in a board as a parameter
+    #MAKE SURE TO CHECK IF ITS SOLVED EVERY STEP
     # WRITE THIS
-    self.master.level.set("SolvedBoard")
-    self.reset()
-    for index in range(1000):   # Do 1000 random moves
-        tempCarArray = sample(self.master.carArray, 1)
-        tempCar = self.master.carArray[tempCarArray[0]]
-        self.generateMove()
-    self.clearBoard()
-    self.drawGrid()
-    self.drawCars()
+    board.master.level.set("SolvedBoard")
+    board.reset()
+    seenNodes = []
+    curNode = Node(board.master.movesDone, board.master.carArray)
+    seenNodes.append(curNode)
+    numTries = 0
+    k = 0
+    while k < 100:   # Do 10 random moves
+        nextMove = board.generateMove()                # FIX GENERATE LATER
+        nextMove.currentCar.doMove(nextMove)
+        curNode = Node(board.master.movesDone, board.master.carArray)
+        for n in seenNodes:
+            if curNode.same(n):
+                nextMove.currentCar.doMove(nextMove.getOpposite())
+                numTries += 1
+                if numTries > 20:
+                    break
+                print numTries
+                continue
+        numTries = 0
+        seenNodes.append(curNode)
+        k += 1
+        
+    board.clearBoard()
+    board.drawGrid()
+    board.drawCars()
 
 def main():
     root = Tk()
