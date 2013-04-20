@@ -1,35 +1,50 @@
 '''
 Created on Apr 18, 2013
-
-@author: Matt
+@author: Matt, Arjun
 '''
 from copy import deepcopy
 import Queue
+from time import time
+from sets import Set
 
-def solve(board):
+# FIX THIS TO NOT USE BOARD ONCE I FIX OTHER ONES
+def solve(board, cars):
     init = makeArray(board)
     q = Queue.Queue()
-    seen = []
-    q.put(init)
+    seen = Set()
+    p = ()
+    q.put((init, p))
     solFound = False
         
+    x = 0
+    y = 0
     while q.qsize() != 0 and solFound == False:
-        cur = q.get()
-#         print len(seen)
-        solution = cur
-        if checkForWin(board, cur):
+        curFull = q.get()
+        cur = curFull[0]
+        if checkForWin(board.master.winrow, cur):
             solFound = True
-            solution = cur
+            print "HI"
+            solution = curFull
             break
-        mvs = getAllMoves(board, cur)
-        for mvKey in mvs:
+        x -= time()
+        mvs = getAllMoves(cars, cur)                    # 1.06s on 1, 4.23s on 35, 30.3s on 50 (all multi-length)
+                                                        # 0.81s on 1, 3.57s on 35, 23.4s on 50(all 1-length)
+        x += time()
+        y -= time()
+        for mvKey in mvs:                               # 0.34s on 1, 3.87s on 35, 24.65s on insane (all multi-length)
+                                                        # 0.43s on 1, 5.85s on 35, 58.84s on insane (all 1-length)
             for mv in mvs[mvKey]:
-                if mv not in seen:
-                    seen.append(mv)
-                    q.put(mv)
+                if str(mv) not in seen:
+                    prev = deepcopy(curFull)    #deepcopy necessary?
+#                     seen.append(mv)
+                    seen.add(str(mv))
+                    q.put((mv, prev))
+        y += time()
+    print x
+    print y
+    return solution
     
-    return makeBoard(board, solution)
-    
+# OK TO USE BOARD!
 def makeArray(board):
     boardString = [["X" for x in range(board.master.rows)] for y in range(board.master.columns)]
     xx = 0
@@ -51,9 +66,11 @@ def makeArray(board):
                 i += 1
     return boardString
     
-def makeBoard(board, boardString):
+# OK FOR THIS TO USE BOARD
+def updateBoard(board, boardString):
     x = 0
     y = 0
+    carArray = board.master.carArray
     for car in board.master.carArray:
         found = False
         x = 0
@@ -66,20 +83,20 @@ def makeBoard(board, boardString):
                 if found:
                     break
                 if boardString[column][row] == board.master.carArray[car].name:
-                    board.master.carArray[car].xmin = x
-                    board.master.carArray[car].ymin = y
+                    carArray[car].xmin = x
+                    carArray[car].ymin = y
                     if board.master.carArray[car].direction == "vert":
-                        board.master.carArray[car].xmax = x + board.master.cellwidth
-                        board.master.carArray[car].ymax = y + board.master.carArray[car].length*board.master.cellheight
+                        carArray[car].xmax = x + board.master.cellwidth
+                        carArray[car].ymax = y + board.master.carArray[car].length*board.master.cellheight
                     else: # "horiz"
-                        board.master.carArray[car].xmax = x + board.master.carArray[car].length*board.master.cellwidth
-                        board.master.carArray[car].ymax = y + board.master.cellheight
+                        carArray[car].xmax = x + board.master.carArray[car].length*board.master.cellwidth
+                        carArray[car].ymax = y + board.master.cellheight
                     found = True
                 y += board.master.cellheight
             x += board.master.cellwidth
-    return board
+#     return carArray
 
-def movePos(boardString, carName):
+def movePos(boardString, carName, length):
     found = False
     startX, startY, finalX, finalY = 0, 0, 0, 0
     for column in range(len(boardString[0])):
@@ -92,19 +109,23 @@ def movePos(boardString, carName):
                 finalX = column
                 finalY = row
     if found and finalY - startY > finalX - startX and boardString[startX][startY] == carName and boardString[finalX][finalY] == carName: # vert
-        if finalY + 1 >= len(boardString[0]) or boardString[finalX][finalY+1] != "X":   # Number of rows
+        if finalY + length >= len(boardString[0]) or boardString[finalX][finalY + length] != "X":   # Number of rows
             return False
-        boardString[startX][startY] = "X"
-        boardString[finalX][finalY+1] = carName
-#         
+        for space in range(length):
+            boardString[startX][startY + space] = "X"
+            boardString[finalX][finalY + space + 1] = carName
+         
     elif found and finalX - startX > finalY - startY and boardString[startX][startY] == carName and boardString[finalX][finalY] == carName: # "horiz"
-        if finalX + 1 >= len(boardString) or boardString[finalX+1][finalY] != "X": # Number of columns
+        if finalX + length >= len(boardString) or boardString[finalX + length][finalY] != "X": # Number of columns
             return False
-        boardString[startX][startY] = "X"
-        boardString[finalX+1][finalY] = carName
+        for space in range(length):
+            boardString[startX + space][startY] = "X"
+            boardString[finalX + space + 1][finalY] = carName
+    if not found:
+        return False
     return boardString
 
-def moveNeg(boardString, carName):
+def moveNeg(boardString, carName, length):
     found = False
     startX, startY, finalX, finalY = 0, 0, 0, 0
     for column in range(len(boardString[0])):
@@ -117,34 +138,59 @@ def moveNeg(boardString, carName):
                 finalX = column
                 finalY = row
     if found and finalY - startY > finalX - startX and boardString[startX][startY] == carName and boardString[finalX][finalY] == carName: # vert
-        if startY - 1 < 0 or boardString[startX][startY-1] != "X":   # Number of rows
+        if startY - length < 0 or boardString[startX][startY - length] != "X":   # Number of rows
             return False
-        boardString[finalX][finalY] = "X"
-        boardString[startX][startY-1] = carName
+        for space in range(length):
+            boardString[finalX][finalY - space] = "X"
+            boardString[startX][startY - space - 1] = carName
         
     elif found and finalX - startX > finalY - startY and boardString[startX][startY] == carName and boardString[finalX][finalY] == carName: # "horiz"
-        if startX - 1 < 0 or boardString[startX-1][startY] != "X": # Number of columns
+        if startX - length < 0 or boardString[startX - length][startY] != "X": # Number of columns
             return False
-        boardString[finalX][finalY] = "X"
-        boardString[startX-1][startY] = carName
+        for space in range(length):
+            boardString[finalX - space][finalY] = "X"
+            boardString[startX - space - 1][startY] = carName
+    if not found:
+        return False
     return boardString
 
-def getAllMoves(board, boardString):
+def getAllMoves(cars, boardString):
     moves = {}
-    for car in board.master.carArray:
-        moves[board.master.carArray[car].name] = []
+    for car in cars:
+        moves[car] = []
         newBrdStr = deepcopy(boardString)
-        if movePos(newBrdStr, board.master.carArray[car].name) != False:
-            moves[board.master.carArray[car].name].append(newBrdStr)
-        newBrdStr = deepcopy(boardString)
-        if moveNeg(newBrdStr, board.master.carArray[car].name) != False:
-            moves[board.master.carArray[car].name].append(newBrdStr)
+
+        for length in range(len(boardString)):              # Uncomment this line to do any length moves
+#         for length in range(2):                           # Uncomment this line to do only moves of length 1
+            if length == 0:
+                continue
+            if movePos(newBrdStr, car, length) != False:
+                moves[car].append(newBrdStr)
+                newBrdStr = deepcopy(boardString)
+            else:
+                break
+        for length in range(len(boardString)):              # Uncomment this line to do any length moves
+#         for length in range(2):                           # Uncomment this line to do only moves of length 1
+            if length == 0:
+                continue
+            if moveNeg(newBrdStr, car, length) != False:
+                moves[car].append(newBrdStr)
+                newBrdStr = deepcopy(boardString)
+            else:
+                break
     return moves
 
-def checkForWin(board, boardString):
+def checkForWin(winrow, boardString):
     for column in range(len(boardString[0])):
         for row in range(len(boardString)):
             if boardString[column][row] == "Goal":
-                if column == len(boardString[0]) - 1 and row == board.master.winrow:
+                if column == len(boardString[0]) - 1 and row == winrow:
                     return True
     return False
+
+# OK TO USE BOARD
+def getCarArray(board):
+    cars = []
+    for car in board.master.carArray:
+        cars.append(board.master.carArray[car].name)
+    return cars

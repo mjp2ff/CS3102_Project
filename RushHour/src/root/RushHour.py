@@ -1,27 +1,19 @@
 '''
 Created on Apr 9, 2013
-
-@author: Matt
+@author: Matt, Arjun
 '''
 from Tkinter import *
 from random import randrange, sample
 import tkMessageBox
 import winsound
-import time
-import Queue
-from copy import deepcopy
+from time import sleep, clock, time
 import Solver
+from ctypes import *
 # from sys import argv
 # import time
 
 global currentCar
 currentCar = None
-
-global moved  # Checks if a move was made, for use in 
-moved = False
-
-global moveNum  # Used to index the moves done.
-moveNum = 0
 
 class Board:
     master = None
@@ -112,7 +104,7 @@ class Board:
         self.master.remainingLbl.place(x=620, y=260, height=40, width=160)
 
     def keyPressed(self, event):
-        global moved, currentCar
+        global currentCar
         self.clearBoard()
         self.drawGrid()
         self.drawCars()  
@@ -130,39 +122,33 @@ class Board:
                     m = Move(currentCar, 1)
             if m != None:
                 m.currentCar.doMove(m)
-                m.currentCar.validateMove(m)
+                if m.currentCar.validateMove(m):
+                    self.incrementMoves()
         self.clearBoard()
         self.drawGrid()
         self.drawCars()
         self.checkForWin()
       
     def mousePressed(self, event):
-        global currentCar, moved
-        if moved:
-            self.incrementMoves()
-            moved = False
+        global currentCar
         currentCar = None
         for index in self.master.carArray:
             self.master.carArray[index].tags = 'car'  # Do this to un-highlight all non-current cars
             if event.x > self.master.carArray[index].xmin and event.x < self.master.carArray[index].xmax and event.y > self.master.carArray[index].ymin and event.y < self.master.carArray[index].ymax:
                 currentCar = self.master.carArray[index]
                 currentCar.tags = 'current'
-                # Save old car (duplicate, not reference) in case it screws up later.
-                # WHY WONT YOU WORK !
         self.clearBoard()
         self.drawGrid()
         self.drawCars()
 #                 return    # Doesn't uncolor all cars right if I return early.
     
     def checkForWin(self):
-        global moved
         for i in self.master.carArray:
             car = self.master.carArray[i]
             if car.xmax >= self.master.columns * self.master.cellwidth and car.ymin == self.master.winrow * self.master.cellheight and car.direction == 'horiz':
                 winBox = tkMessageBox.showinfo("Win Message", "Congratulations! You took: " + str(self.master.moves+1) + " moves.")
                 self.reset()
                 target=winsound.PlaySound('fanfare.wav', winsound.SND_FILENAME)
-                moved = False
 
     def drawGrid(self):
         for column in range(self.master.columns):
@@ -248,15 +234,11 @@ class Car(object):
     
     # Checks if a made move was valid. If it wasn't it reverses that move. DOES NOT ADD IT TO MOVESDONE ANYMORE
     def validateMove(self, move):
-        global moved, moveNum
         if (self.board.checkForCollisions(self.board.master.carArray)) or (self.ymax > self.board.master.columns * self.board.master.cellheight) or (self.ymin < 0) \
             or (self.xmax > self.board.master.columns * self.board.master.cellwidth) or (self.xmin < 0):
             self.doMove(Move(move.currentCar, -1 * move.dist))
             return False
         else:
-            moved = True
-            moveNum += 1
-#             self.board.master.movesDone.append(move)
             return True
         
     # Checks whether a potential move would be valid. Changes nothing.
@@ -277,13 +259,11 @@ class Car(object):
         elif self.direction == "horiz":
             self.xmin += move.dist*self.board.master.cellwidth
             self.xmax += move.dist*self.board.master.cellwidth
-#         print move.num # WORK ON MOVENUM TO MAKE IT BETTER
     
 class Move(object):
     currentCar, dist = None, 0
     # constructor
     def __init__(self, currentCar, dist):
-        global moveNum
         self.currentCar = currentCar
         self.dist = dist
         
@@ -321,12 +301,40 @@ def deepCopyMove(aMove):
     copy = Move(aMove.currentCar, aMove.dist)
     return copy
 
-def solve(board):    
-    board = Solver.solve(board)
-    board.clearBoard()
-    board.drawGrid()
-    board.drawCars()
+def findMove(carArray1, carArray2):
+    mv = None
+    for index in carArray1:
+        if carArray1[index].xmin != carArray2[index].xmin:
+            mv = Move(carArray1[index], carArray2[index].xmin - carArray1[index].xmin)
+        if carArray1[index].ymin != carArray2[index].ymin:
+            mv = Move(carArray1[index], carArray2[index].ymin - carArray1[index].ymin)
+    return mv
+
+def solve(board):
+    # Trying to get ctypes to work... it's hard. Maybe try swig tomorrow
+#     hello = cdll.LoadLibrary('D:\Dropbox\Visual Studio 2012\Projects\RushHourSolver\RushHourSolver\Debug\HelloWorld.obj')
+#     x = hello.hello()
+#     print x
     
+    cars = Solver.getCarArray(board)
+    for num in range(1):
+        solution = Solver.solve(board, cars)
+    
+    mvs = []
+    mvs.append(solution[0])
+    while solution[1] != ():
+        solution = solution[1]
+        mvs.append(solution[0])
+    for thing in reversed(mvs):
+        board.incrementMoves()
+        Solver.updateBoard(board, thing)
+        board.clearBoard()
+        board.drawGrid()
+        board.drawCars()
+        board.master.update()
+        sleep(0.2)
+    board.checkForWin()
+
 def generate(board):                 # Takes in a board as a parameter
     board.master.level.set("SolvedBoard")
     board.reset()
