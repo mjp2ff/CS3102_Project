@@ -8,9 +8,6 @@ import tkMessageBox
 import winsound
 from time import sleep, clock, time
 import Solver
-from ctypes import *
-# from sys import argv
-# import time
 
 global currentCar
 currentCar = None

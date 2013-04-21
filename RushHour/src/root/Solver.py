@@ -30,16 +30,15 @@ def solve(board, cars):
         mvs = getAllMoves(cars, cur)                    # 1.06s on 1, 4.23s on 35, 30.3s on 50 (all multi-length)
                                                         # 0.81s on 1, 3.57s on 35, 23.4s on 50(all 1-length)
         x += time()
-        y -= time()
         for mvKey in mvs:                               # 0.34s on 1, 3.87s on 35, 24.65s on insane (all multi-length)
                                                         # 0.43s on 1, 5.85s on 35, 58.84s on insane (all 1-length)
             for mv in mvs[mvKey]:
                 if str(mv) not in seen:
-                    prev = deepcopy(curFull)    #deepcopy necessary?
-#                     seen.append(mv)
+                    y -= time()
+                    prev = deepcopy(curFull)    #deepcopy necessary?    MOST TIME SPENT HERE!!! >95% of search time.
+                    y += time()
                     seen.add(str(mv))
                     q.put((mv, prev))
-        y += time()
     print x
     print y
     return solution
