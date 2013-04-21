@@ -272,7 +272,6 @@ class Car(object):
         
     def outOfBounds(self):
         if self.ymax > (self.board.master.columns * self.board.master.cellheight) or self.xmax > (self.board.master.columns * self.board.master.cellwidth) or self.xmin < 0 or self.ymin < 0:
-            print 'In outOfBounds: ' + str(self.xmin) +  ' ' + str(self.xmax) + ' ' + str(self.ymin) + ' ' + str(self.ymax)
             return True
         return False
         
@@ -339,8 +338,8 @@ def solve(board):
     sizeOfSet = 0
     
     while (q.qsize()!=0 and solFound == False):
-        print "The queue size is: " + str(q.qsize())
-        print "We have found " + str(sizeOfSet) + " unique nodes"
+#         print "The queue size is: " + str(q.qsize())
+#         print "We have found " + str(sizeOfSet) + " unique nodes"
         n = q.get()
 #         if n.strval in seen:
 #             print "We did this before!"
@@ -354,26 +353,26 @@ def solve(board):
                 solution = n.movesDone
                 newCarArray = n.carArray
                 solFound = True
-                print "YAY!!!! FINALLY!!!!!!!!"
+#                 print "YAY!!!! FINALLY!!!!!!!!"
         
         if solFound:
             break;
         for i in n.carArray:
-            print "checking car" + str(i)
+#             print "checking car" + str(i)
             car = n.carArray[i];
             maxMoves = 4
             counter = 0
             
             # Try moving down/right
             while counter != maxMoves:
-                print "checking pos"
+#                 print "checking pos"
                 newMove = Move(car, counter+1)
                 newMove.currentCar.doMove(newMove)
                 if (n.board.collisionChecker(n.carArray) or car.outOfBounds()):
                     undo = newMove.getOpposite()
                     undo.currentCar = car
                     undo.currentCar.doMove(undo)
-                    print "collides!" + " " + str(counter+1)
+#                     print "collides!" + " " + str(counter+1)
                     break;
                 else: 
                     newMovesDone = []
@@ -387,44 +386,45 @@ def solve(board):
                         newNewMove = Move(newCar, deepcopy(move.dist))
                         newMovesDone.append(newNewMove)
                     p = Node(newMovesDone, newCarArray, board)
-                    print "New carArray in p node: "
-                    for index in p.carArray:
-                        print str(p.carArray[index].xmin) + " " + str(p.carArray[index].xmax) + " " + str(p.carArray[index].ymin) + " " + str(p.carArray[index].ymax)
+# #                     print "New carArray in p node: "
+#                     for index in p.carArray:
+#                         print str(p.carArray[index].xmin) + " " + str(p.carArray[index].xmax) + " " + str(p.carArray[index].ymin) + " " + str(p.carArray[index].ymax)
 #                     print str(newMove.currentCar.ymin) + " " + str(newMove.currentCar.ymax)
-                    print "Before undo: " + str(car.ymin) + " " + str(car.ymax)
+#                     print "Before undo: " + str(car.ymin) + " " + str(car.ymax)
                     undo = newMove.getOpposite()
                     undo.currentCar = car
                     undo.currentCar.doMove(undo)
-                    print "After undo: " + str(car.ymin) + " " + str(car.ymax)
+#                     print "After undo: " + str(car.ymin) + " " + str(car.ymax)
 #                     newMove.currentCar.doMove(newMove.getOpposite())
-                    print str(car.ymin) + " " + str(car.ymax)
+#                     print str(car.ymin) + " " + str(car.ymax)
 #                     print str(newMove.currentCar.ymin) + " " + str(newMove.currentCar.ymax)
                     p.movesDone.append(newMove)
                     p.recompileStrval()
                     if p.strval in seen:
-                        print "Didn't add this one"
+#                         print "Didn't add this one"
+                        z=0
                     else:
                         q.put(p)
                         seen.add(p.strval)
                         sizeOfSet = sizeOfSet + 1
-                        print "put something in queue"
+#                         print "put something in queue"
                 counter = counter + 1
             
             counter = 0
             # Try moving up/left
             while counter != maxMoves:
-                print "checking neg"
+#                 print "checking neg"
                 newMove = Move(car, -1*(counter+1))
                 newMove.currentCar.doMove(newMove)
                 if (n.board.collisionChecker(n.carArray) or car.outOfBounds()):
-                    if car.outOfBounds():
-                        print "the car is out of bounds"
-                    else:
-                        print "cars are colliding"
+#                     if car.outOfBounds():
+#                         print "the car is out of bounds"
+#                     else:
+#                         print "cars are colliding"
                     undo = newMove.getOpposite()
                     undo.currentCar = car
                     undo.currentCar.doMove(undo)
-                    print "collides!" + " " + str(counter+1)
+#                     print "collides!" + " " + str(counter+1)
                     break;
                 else:
                     newMovesDone = []
@@ -438,23 +438,24 @@ def solve(board):
                         newNewMove = Move(newCar, deepcopy(move.dist))
                         newMovesDone.append(newNewMove)
                     p = Node(newMovesDone, newCarArray, board)
-                    for index in p.carArray:
-                        print str(p.carArray[index].xmin) + " " + str(p.carArray[index].xmax) + " " + str(p.carArray[index].ymin) + " " + str(p.carArray[index].ymax)
-                    print "Before undo: " + str(car.ymin) + " " + str(car.ymax)
+#                     for index in p.carArray:
+#                         print str(p.carArray[index].xmin) + " " + str(p.carArray[index].xmax) + " " + str(p.carArray[index].ymin) + " " + str(p.carArray[index].ymax)
+#                     print "Before undo: " + str(car.ymin) + " " + str(car.ymax)
                     undo = newMove.getOpposite()
-                    print undo.dist
+#                     print undo.dist
                     undo.currentCar = car
                     undo.currentCar.doMove(undo)
-                    print "After undo: " + str(car.ymin) + " " + str(car.ymax)
+#                     print "After undo: " + str(car.ymin) + " " + str(car.ymax)
                     p.movesDone.append(newMove)
                     p.recompileStrval()
                     if p.strval in seen:
-                        print "Didn't add this one"
+#                         print "Didn't add this one"
+                        z=0
                     else:
                         q.put(p)
                         seen.add(p.strval)
                         sizeOfSet = sizeOfSet + 1
-                        print "put something in queue"
+#                         print "put something in queue"
 #                     newMove.currentCar.doMove(newMove.getOpposite())
                 counter = counter + 1
 #         print "The queue size is: " + str(q.qsize())
@@ -462,13 +463,13 @@ def solve(board):
     for move in solution:
         for index in board.master.carArray:
             if move.currentCar.name == board.master.carArray[index].name:
-                print str(move.currentCar.name) + " " + str(move.dist)
                 board.master.carArray[index].doMove(move)
                 board.clearBoard()
                 board.drawGrid()
                 board.drawCars()
                 board.checkForWin()
-                board.master.after(100)
+                board.master.update()
+                board.master.after(500)
     
 def generate(board):                 # Takes in a board as a parameter
     board.master.level.set("SolvedBoard")
@@ -507,7 +508,7 @@ def generate(board):                 # Takes in a board as a parameter
     board.drawCars()
 
 def deepCopyCar(acar):
-    copy = Car(acar.board, acar.name, deepcopy(acar.xmin)/acar.board.master.cellwidth, deepcopy(acar.ymin)/acar.board.master.cellheight, deepcopy(acar.xmax)/acar.board.master.cellwidth, deepcopy(acar.ymax)/acar.board.master.cellheight)
+    copy = Car(acar.board, acar.name, acar.xmin/acar.board.master.cellwidth, acar.ymin/acar.board.master.cellheight, acar.xmax/acar.board.master.cellwidth, acar.ymax/acar.board.master.cellheight)
     return copy
 
 def main():

@@ -144,6 +144,8 @@ class Board:
             car = self.master.carArray[i]
             if car.xmax >= self.master.columns * self.master.cellwidth and car.ymin == self.master.winrow * self.master.cellheight and car.direction == 'horiz':
                 winBox = tkMessageBox.showinfo("Win Message", "Congratulations! You took: " + str(self.master.moves+1) + " moves.")
+                if (self.master.level.get() == "SolvedBoard"):
+                    self.master.level.set("Level 1 - Beginner")
                 self.reset()
                 target=winsound.PlaySound('fanfare.wav', winsound.SND_FILENAME)
 
@@ -329,7 +331,7 @@ def solve(board):
         board.drawGrid()
         board.drawCars()
         board.master.update()
-        sleep(0.2)
+        sleep(0.3)
     board.checkForWin()
 
 def generate(board):                 # Takes in a board as a parameter
