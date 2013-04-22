@@ -7,40 +7,43 @@ import Queue
 from time import time
 from sets import Set
 
+global timeTaken
+
 # FIX THIS TO NOT USE BOARD ONCE I FIX OTHER ONES
 def solve(board, cars):
+    global timeTaken
+    x = 0
+    timeTaken = 0
+    x -= time()
     init = makeArray(board)
     q = Queue.Queue()
     seen = Set()
     p = ()
     q.put((init, p))
     solFound = False
-        
-    x = 0
-    y = 0
+    
     while q.qsize() != 0 and solFound == False:
         curFull = q.get()
         cur = curFull[0]
         if checkForWin(board.master.winrow, cur):
             solFound = True
-            print "HI"
             solution = curFull
             break
-        x -= time()
         mvs = getAllMoves(cars, cur)                    # 1.06s on 1, 4.23s on 35, 30.3s on 50 (all multi-length)
                                                         # 0.81s on 1, 3.57s on 35, 23.4s on 50(all 1-length)
-        x += time()
         for mvKey in mvs:                               # 0.34s on 1, 3.87s on 35, 24.65s on insane (all multi-length)
                                                         # 0.43s on 1, 5.85s on 35, 58.84s on insane (all 1-length)
             for mv in mvs[mvKey]:
                 if str(mv) not in seen:
-                    y -= time()
-                    prev = deepcopy(curFull)    #deepcopy necessary?    MOST TIME SPENT HERE!!! >95% of search time.
-                    y += time()
+#                     timeTaken -= time()
+#                     prev = deepcopy(curFull)    #deepcopy necessary?    MOST TIME SPENT HERE!!! >95% of search time.
+                    prev = curFull
+#                     timeTaken += time()
                     seen.add(str(mv))
                     q.put((mv, prev))
-    print x
-    print y
+    x += time()
+    print "Total time solving: " + str(x)
+    print "Total time deepcopying: " + str(timeTaken)
     return solution
     
 # OK TO USE BOARD!
@@ -154,10 +157,13 @@ def moveNeg(boardString, carName, length):
     return boardString
 
 def getAllMoves(cars, boardString):
+    global timeTaken
     moves = {}
     for car in cars:
         moves[car] = []
+        timeTaken -= time()
         newBrdStr = deepcopy(boardString)
+        timeTaken += time()
 
         for length in range(len(boardString)):              # Uncomment this line to do any length moves
 #         for length in range(2):                           # Uncomment this line to do only moves of length 1
@@ -165,7 +171,9 @@ def getAllMoves(cars, boardString):
                 continue
             if movePos(newBrdStr, car, length) != False:
                 moves[car].append(newBrdStr)
+                timeTaken -= time()
                 newBrdStr = deepcopy(boardString)
+                timeTaken += time()
             else:
                 break
         for length in range(len(boardString)):              # Uncomment this line to do any length moves
@@ -174,7 +182,9 @@ def getAllMoves(cars, boardString):
                 continue
             if moveNeg(newBrdStr, car, length) != False:
                 moves[car].append(newBrdStr)
+                timeTaken -= time()
                 newBrdStr = deepcopy(boardString)
+                timeTaken += time()
             else:
                 break
     return moves

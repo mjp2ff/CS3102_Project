@@ -121,7 +121,6 @@ class Board:
                 m.currentCar.doMove(m)
                 if m.currentCar.validateMove(m):
                     moved = True
-                    print "moved"
                 else:
                     moved = False
             else:
