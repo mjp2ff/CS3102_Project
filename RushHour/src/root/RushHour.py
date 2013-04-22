@@ -12,6 +12,9 @@ import Solver
 global currentCar
 currentCar = None
 
+global moved
+moved = False
+
 class Board:
     master = None
     def __init__(self, master):        
@@ -57,51 +60,48 @@ class Board:
         master.generateButton = Button(master, text="Generate puzzle", command=self.generate)
         master.generateButton.place(x=610, y=510, height=80, width=180)
         
-        master.movesLbl = Label(master, text="Total moves: " + str(master.moves))
-        master.movesLbl.place(x=620, y=200, height=40, width=160)
-        
-        master.remainingLbl = Label(master, text="Minimum moves\n remaining: " + str(self.remaining()))
-        master.remainingLbl.place(x=620, y=260, height=40, width=160)
+        master.movesLbl = Label(master, text="Total moves: " + str(self.master.moves))
+        master.movesLbl.place(x=620, y=215, height=40, width=160)
         
         self.reset()
         master.canvas.bind("<Button-1>", self.mousePressed)
         master.canvas.bind("<Key>", self.keyPressed)
 
     def nextMove(self):
-        print "Next move pressed!"
+        nextMove(self)
         
     def solve(self):
         solve(self)
         
     def generate(self):
         generate(self)  # Call real generate method
-        
-    def remaining(self):
-        return randrange(0, 10)
 
     def reset(self):  # This method takes no parameters (for button).
         self.resetEvent(None)
 
     def resetEvent(self, event):  # This method takes a parameter (for optionmenu)
+        global moved
         self.master.carArray = {}  # Stores all our cars that are on the board
         self.master.rect = {}  # Stores all the rectangles (grid)
         self.master.movesDone = []
+        self.master.moves = 0
+        moved = False
         self.clearBoard()
         self.drawGrid()
         self.loadCars()
         self.drawCars()
-        self.master.moves = -1  # Resets moves to 0
-        self.incrementMoves()
+        self.master.movesLbl.destroy()
+        self.master.movesLbl = Label(self.master, text="Total moves: " + str(0))
+        self.master.movesLbl.place(x=620, y=215, height=80, width=180)
         
     def incrementMoves(self):
         self.master.moves += 1
+        self.master.movesLbl.destroy()
         self.master.movesLbl = Label(self.master, text="Total moves: " + str(self.master.moves))
-        self.master.movesLbl.place(x=620, y=200, height=80, width=180)
-        self.master.remainingLbl = Label(self.master, text="Minimum moves\n remaining: " + str(self.remaining()))
-        self.master.remainingLbl.place(x=620, y=260, height=40, width=160)
+        self.master.movesLbl.place(x=620, y=215, height=80, width=180)
 
     def keyPressed(self, event):
-        global currentCar
+        global currentCar, moved
         self.clearBoard()
         self.drawGrid()
         self.drawCars()  
@@ -109,7 +109,7 @@ class Board:
             m = None
             if currentCar.direction == 'vert':
                 if event.char == 'w':
-                    m = Move(currentCar, -1)        
+                    m = Move(currentCar, -1)      
                 if event.char == 's':
                     m = Move(currentCar, 1)
             if currentCar.direction == 'horiz':
@@ -120,20 +120,28 @@ class Board:
             if m != None:
                 m.currentCar.doMove(m)
                 if m.currentCar.validateMove(m):
-                    self.incrementMoves()
+                    moved = True
+                    print "moved"
+                else:
+                    moved = False
+            else:
+                moved = False
         self.clearBoard()
         self.drawGrid()
         self.drawCars()
         self.checkForWin()
       
     def mousePressed(self, event):
-        global currentCar
+        global currentCar, moved
         currentCar = None
         for index in self.master.carArray:
             self.master.carArray[index].tags = 'car'  # Do this to un-highlight all non-current cars
             if event.x > self.master.carArray[index].xmin and event.x < self.master.carArray[index].xmax and event.y > self.master.carArray[index].ymin and event.y < self.master.carArray[index].ymax:
                 currentCar = self.master.carArray[index]
                 currentCar.tags = 'current'
+                if moved:
+                    self.incrementMoves()
+                    moved = False
         self.clearBoard()
         self.drawGrid()
         self.drawCars()
@@ -143,7 +151,7 @@ class Board:
         for i in self.master.carArray:
             car = self.master.carArray[i]
             if car.xmax >= self.master.columns * self.master.cellwidth and car.ymin == self.master.winrow * self.master.cellheight and car.direction == 'horiz':
-                winBox = tkMessageBox.showinfo("Win Message", "Congratulations! You took: " + str(self.master.moves+1) + " moves.")
+                winBox = tkMessageBox.showinfo("Win Message", "Congratulations! You took: " + str(self.master.moves) + " moves.")
                 if (self.master.level.get() == "SolvedBoard"):
                     self.master.level.set("Level 1 - Beginner")
                 self.reset()
@@ -250,7 +258,7 @@ class Car(object):
         self.doMove(move.getOpposite())
         return good
     
-    # moves a car somewhere else. DOES NOT CHECK FOR VALIDITY
+    # Moves a car somewhere else. DOES NOT CHECK FOR VALIDITY
     def doMove(self, move):
         if self.direction == "vert":
             self.ymin += move.dist*self.board.master.cellheight
@@ -310,28 +318,42 @@ def findMove(carArray1, carArray2):
     return mv
 
 def solve(board):
-    # Trying to get ctypes to work... it's hard. Maybe try swig tomorrow
-#     hello = cdll.LoadLibrary('D:\Dropbox\Visual Studio 2012\Projects\RushHourSolver\RushHourSolver\Debug\HelloWorld.obj')
-#     x = hello.hello()
-#     print x
-    
     cars = Solver.getCarArray(board)
-    for num in range(1):
-        solution = Solver.solve(board, cars)
+    solution = Solver.solve(board, cars)
     
     mvs = []
     mvs.append(solution[0])
     while solution[1] != ():
         solution = solution[1]
         mvs.append(solution[0])
-    for thing in reversed(mvs):
+        
+    mvs.pop()                   # Get rid of first move (no change).
+    while len(mvs) != 0:
         board.incrementMoves()
-        Solver.updateBoard(board, thing)
+        Solver.updateBoard(board, mvs.pop())
         board.clearBoard()
         board.drawGrid()
         board.drawCars()
         board.master.update()
         sleep(0.3)
+    board.checkForWin()
+
+def nextMove(board):
+    cars = Solver.getCarArray(board)
+    solution = Solver.solve(board, cars)
+    
+    mvs = []
+    mvs.append(solution[0])
+    while solution[1] != ():
+        solution = solution[1]
+        mvs.append(solution[0])
+    board.incrementMoves()
+    mvs.pop()           # Get rid of first move (no change).
+    Solver.updateBoard(board, mvs.pop())
+    board.clearBoard()
+    board.drawGrid()
+    board.drawCars()
+    board.master.update()
     board.checkForWin()
 
 def generate(board):                 # Takes in a board as a parameter
@@ -365,7 +387,6 @@ def generate(board):                 # Takes in a board as a parameter
             k = 0
             numTries = 0
         wrong = False
-        
     board.clearBoard()
     board.drawGrid()
     board.drawCars()
