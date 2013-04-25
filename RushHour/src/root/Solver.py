@@ -45,7 +45,7 @@ def solve(board, cars):
     print "Total time solving: " + str(x)
     print "Total time deepcopying: " + str(timeTaken)
     return solution
-    
+   
 # OK TO USE BOARD!
 def makeArray(board):
     boardString = [["X" for x in range(board.master.rows)] for y in range(board.master.columns)]
